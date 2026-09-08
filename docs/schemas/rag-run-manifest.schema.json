@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/rag-run-manifest.schema.json",
+  "title": "RAG Evaluation Run Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "dataset",
+    "knowledge_base",
+    "pipeline",
+    "models",
+    "evaluation",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dataset_id", "snapshot_version", "sha256"],
+      "properties": {
+        "dataset_id": { "type": "string", "minLength": 1 },
+        "snapshot_version": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      }
+    },
+    "knowledge_base": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["knowledge_base_id", "knowledge_base_version"],
+      "properties": {
+        "knowledge_base_id": { "type": "string", "minLength": 1 },
+        "knowledge_base_version": { "type": "string", "minLength": 1 },
+        "index_name": { "type": "string", "minLength": 1 },
+        "index_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "pipeline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_version",
+        "chunk_strategy_version",
+        "retrieval_version",
+        "fusion_strategy",
+        "top_k",
+        "context_budget_tokens",
+        "prompt_version"
+      ],
+      "properties": {
+        "parser_version": { "type": "string", "minLength": 1 },
+        "chunk_strategy_version": { "type": "string", "minLength": 1 },
+        "retrieval_version": { "type": "string", "minLength": 1 },
+        "fusion_strategy": { "type": "string", "minLength": 1 },
+        "top_k": { "type": "integer", "minimum": 1 },
+        "dense_k": { "type": "integer", "minimum": 1, "default": 5 },
+        "sparse_k": { "type": "integer", "minimum": 1 },
+        "rerank_enabled": { "type": "boolean", "default": false },
+        "rerank_version": { "type": ["string", "null"] },
+        "query_rewrite_version": { "type": ["string", "null"] },
+        "context_budget_tokens": { "type": "integer", "minimum": 1 },
+        "prompt_version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["embedding", "chat"],
+      "properties": {
+        "embedding": { "$ref": "#/$defs/model" },
+        "chat": { "$ref": "#/$defs/model" },
+        "rerank": { "$ref": "#/$defs/modelOrNull" }
+      }
+    },
+    "evaluation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evaluator_versions", "cache_enabled"],
+      "properties": {
+        "evaluator_versions": {
+          "type": "object",
+          "additionalProperties": { "type": "string", "minLength": 1 }
+        },
+        "metrics": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "cache_enabled": { "type": "boolean", "const": false },
+        "sampling": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "seed": { "type": "integer" },
+            "limit": { "type": "integer", "minimum": 1 }
+          }
+        }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "model": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "version"],
+      "properties": {
+        "provider": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "dimension": { "type": ["integer", "null"], "minimum": 1 },
+        "parameters": { "type": "object" }
+      }
+    },
+    "modelOrNull": {
+      "anyOf": [
+        { "$ref": "#/$defs/model" },
+        { "type": "null" }
+      ]
+    }
+  }
+}

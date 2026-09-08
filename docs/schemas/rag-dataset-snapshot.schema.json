@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/rag-dataset-snapshot.schema.json",
+  "title": "RAG Evaluation Dataset Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "dataset_id",
+    "snapshot_version",
+    "name",
+    "sha256",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": { "type": "string", "minLength": 1 },
+    "dataset_id": { "type": "string", "minLength": 1 },
+    "snapshot_version": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "knowledge_base_id": { "type": ["string", "null"] },
+    "knowledge_base_version": { "type": ["string", "null"] },
+    "source_type": {
+      "type": "string",
+      "enum": ["manual", "synthetic", "production_sample", "imported"]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "cases": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/case" },
+      "minItems": 1
+    },
+    "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "ordinal",
+        "question",
+        "gold_chunk_ids",
+        "question_type",
+        "is_unanswerable",
+        "requires_citation"
+      ],
+      "properties": {
+        "case_id": { "type": "string", "minLength": 1 },
+        "ordinal": { "type": "integer", "minimum": 1 },
+        "question": { "type": "string", "minLength": 1 },
+        "reference_answer": { "type": ["string", "null"] },
+        "gold_chunk_ids": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "question_type": {
+          "type": "string",
+          "enum": [
+            "fact",
+            "summary",
+            "multi_hop",
+            "comparison",
+            "conditional",
+            "unanswerable",
+            "other"
+          ]
+        },
+        "is_unanswerable": { "type": "boolean" },
+        "requires_citation": { "type": "boolean" },
+        "allowed_answers": {
+          "type": ["array", "null"],
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "annotations": { "type": "object" },
+        "metadata": { "type": "object" }
+      }
+    }
+  }
+}

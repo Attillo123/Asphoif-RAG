@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/api-response.schema.json",
+  "title": "RAG API Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["success", "code", "message", "data", "error", "request_id", "timestamp"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "code": { "type": "integer", "minimum": 0 },
+    "message": { "type": "string" },
+    "data": {},
+    "error": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["type", "retryable", "details"],
+      "properties": {
+        "type": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "retryable": { "type": "boolean" },
+        "details": { "type": "object" }
+      }
+    },
+    "request_id": { "type": "string", "minLength": 1 },
+    "timestamp": { "type": "string", "format": "date-time" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "success": { "const": true } } },
+      "then": { "properties": { "code": { "const": 0 }, "error": { "type": "null" } } }
+    },
+    {
+      "if": { "properties": { "success": { "const": false } } },
+      "then": { "properties": { "code": { "minimum": 1 }, "data": { "type": "null" } }, "required": ["error"] }
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/rag-evaluation-case-result.schema.json",
+  "title": "RAG Evaluation Case Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "result_id",
+    "run_id",
+    "case_id",
+    "status",
+    "retrieved_chunk_ids",
+    "metrics"
+  ],
+  "properties": {
+    "result_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "case_id": { "type": "string", "minLength": 1 },
+    "request_id": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["completed", "degraded", "failed"] },
+    "retrieved_chunk_ids": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "context_snapshot": { "type": ["object", "null"] },
+    "answer": { "type": ["string", "null"] },
+    "citations": { "type": ["array", "null"] },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": { "type": ["number", "boolean", "string", "null"] }
+    },
+    "diagnosis": { "type": ["object", "null"] },
+    "latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+    "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
+    "cost": { "type": ["number", "null"], "minimum": 0 },
+    "error_message": { "type": ["string", "null"] },
+    "created_at": { "type": ["string", "null"], "format": "date-time" }
+  }
+}

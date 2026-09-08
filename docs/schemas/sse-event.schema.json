@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/sse-event.schema.json",
+  "title": "RAG SSE Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["type", "seq", "request_id", "trace_id", "terminal", "data"],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": ["start", "delta", "citation", "debug", "heartbeat", "end", "error"]
+    },
+    "seq": { "type": "integer", "minimum": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "terminal": { "type": "boolean" },
+    "data": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "delta" } } },
+      "then": {
+        "properties": {
+          "terminal": { "const": false },
+          "data": {
+            "required": ["text"],
+            "properties": { "text": { "type": "string" } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "const": "error" } } },
+      "then": {
+        "properties": {
+          "terminal": { "const": true },
+          "data": {
+            "required": ["code", "error_type", "message", "retryable", "partial_answer"],
+            "properties": {
+              "code": { "type": "integer", "minimum": 1 },
+              "error_type": { "type": "string" },
+              "message": { "type": "string" },
+              "retryable": { "type": "boolean" },
+              "partial_answer": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "type": { "enum": ["end", "error"] } } },
+      "then": { "properties": { "terminal": { "const": true } } }
+    },
+    {
+      "if": { "properties": { "type": { "enum": ["start", "citation", "debug", "heartbeat"] } } },
+      "then": { "properties": { "terminal": { "const": false } } }
+    }
+  ]
+}

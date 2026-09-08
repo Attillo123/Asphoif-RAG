@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/rag-query-trace.schema.json",
+  "title": "RAG Online Query Trace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "trace_schema_version",
+    "request_id",
+    "trace_type",
+    "query_hash",
+    "status",
+    "cache_hit",
+    "degraded",
+    "deadline_ms",
+    "manifest",
+    "stages",
+    "timeout_summary",
+    "degraded_reasons",
+    "created_at"
+  ],
+  "properties": {
+    "trace_schema_version": { "type": "string", "minLength": 1 },
+    "request_id": { "type": "string", "minLength": 1 },
+    "trace_type": {
+      "type": "string",
+      "enum": ["online", "replay", "evaluation"]
+    },
+    "evaluation_run_id": { "type": ["string", "null"] },
+    "evaluation_case_id": { "type": ["string", "null"] },
+    "user_id": { "type": ["string", "null"] },
+    "role": { "type": ["string", "null"], "enum": ["personal", "admin", null] },
+    "conversation_id": { "type": ["string", "null"] },
+    "knowledge_base_id": { "type": ["string", "null"] },
+    "knowledge_base_version": { "type": ["string", "null"] },
+    "query_hash": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "degraded", "failed"]
+    },
+    "cache_hit": { "type": "boolean" },
+    "degraded": { "type": "boolean" },
+    "deadline_ms": { "type": "integer", "minimum": 1 },
+    "deadline_started_at": { "type": "string", "format": "date-time" },
+    "deadline_ended_at": { "type": ["string", "null"], "format": "date-time" },
+    "timeout_at": { "type": ["string", "null"], "format": "date-time" },
+    "degraded_at": { "type": ["string", "null"], "format": "date-time" },
+    "total_latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "first_token_latency_ms": { "type": ["integer", "null"], "minimum": 0 },
+    "input_tokens": { "type": ["integer", "null"], "minimum": 0 },
+    "output_tokens": { "type": ["integer", "null"], "minimum": 0 },
+    "cost": { "type": ["number", "null"], "minimum": 0 },
+    "error_code": { "type": ["string", "null"] },
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "stages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "timeout_summary": { "$ref": "#/$defs/timeoutSummary" },
+    "retrieval_snapshot": { "$ref": "#/$defs/retrievalSnapshot" },
+    "output_snapshot": { "$ref": "#/$defs/outputSnapshot" },
+    "degraded_reasons": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    },
+    "created_at": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "parser_version",
+        "chunk_strategy_version",
+        "embedding_model",
+        "embedding_dimension",
+        "retrieval_version",
+        "prompt_version",
+        "chat_model"
+      ],
+      "properties": {
+        "parser_version": { "type": "string", "minLength": 1 },
+        "chunk_strategy_version": { "type": "string", "minLength": 1 },
+        "embedding_model": { "type": "string", "minLength": 1 },
+        "embedding_dimension": { "type": "integer", "minimum": 1 },
+        "retrieval_version": { "type": "string", "minLength": 1 },
+        "fusion_strategy": { "type": "string", "minLength": 1 },
+        "top_k": { "type": "integer", "minimum": 1 },
+        "dense_k": { "type": "integer", "minimum": 1 },
+        "sparse_k": { "type": "integer", "minimum": 1 },
+        "rerank_model": { "type": ["string", "null"] },
+        "prompt_version": { "type": "string", "minLength": 1 },
+        "chat_model": { "type": "string", "minLength": 1 },
+        "model_parameters": { "type": "object" }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "latency_ms", "started_at", "ended_at"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["completed", "degraded", "timeout", "failed", "skipped"] },
+        "latency_ms": { "type": "integer", "minimum": 0 },
+        "started_at": { "type": "string", "format": "date-time" },
+        "ended_at": { "type": "string", "format": "date-time" },
+        "timeout_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "deadline_remaining_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "retry_count": { "type": "integer", "minimum": 0 },
+        "circuit_state": { "type": ["string", "null"], "enum": ["CLOSED", "OPEN", "HALF_OPEN", null] },
+        "fallback": { "type": ["string", "null"] },
+        "error_code": { "type": ["string", "null"] },
+        "metadata": { "type": "object" }
+      }
+    },
+    "timeoutSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["timed_out", "timeout_stages"],
+      "properties": {
+        "timed_out": { "type": "boolean" },
+        "timeout_stages": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        },
+        "deadline_exceeded": { "type": "boolean" },
+        "circuit_opened_dependencies": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "uniqueItems": true
+        }
+      }
+    },
+    "retrievalSnapshot": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "query": { "type": "string" },
+        "rewritten_query": { "type": ["string", "null"] },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["chunk_id", "rank", "score", "channels"],
+            "properties": {
+              "chunk_id": { "type": "string", "minLength": 1 },
+              "rank": { "type": "integer", "minimum": 1 },
+              "score": { "type": "number" },
+              "channels": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["dense", "sparse", "hybrid", "rerank"] },
+                "uniqueItems": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "outputSnapshot": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "answer": { "type": "string" },
+        "citations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["chunk_id"],
+            "properties": {
+              "chunk_id": { "type": "string", "minLength": 1 },
+              "document_id": { "type": ["string", "null"] },
+              "title": { "type": ["string", "null"] },
+              "valid": { "type": "boolean" }
+            }
+          }
+        },
+        "citation_validation": { "type": "string", "enum": ["passed", "failed", "skipped"] }
+      }
+    }
+  }
+}
