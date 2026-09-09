@@ -1,5 +1,5 @@
-from ulid import ULID
+import ulid
 
 
 def new_id() -> str:
-    return str(ULID())
+    return str(ulid.new())

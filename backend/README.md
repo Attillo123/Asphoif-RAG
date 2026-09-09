@@ -45,6 +45,34 @@ uv run alembic history
 
 迁移读取根目录 `.env` 中的 `DATABASE_URL`。应用内部会将 `mysql+pymysql://` 自动适配为异步 SQLAlchemy 使用的 `mysql+aiomysql://`；Alembic 也使用同一环境变量。
 
+## 阶段 2 认证和权限
+
+先执行阶段 2 的增量迁移：
+
+```powershell
+uv run alembic upgrade head
+```
+
+使用管理 CLI 创建首个用户。密码只用于生成 Argon2id 哈希，不会写入数据库：
+
+```powershell
+uv run python -m app.cli create-user --username admin --password "change-me" --role admin
+```
+
+接口：
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/knowledge-bases
+GET  /api/v1/knowledge-bases
+GET  /api/v1/knowledge-bases/{knowledge_base_id}
+DELETE /api/v1/knowledge-bases/{knowledge_base_id}
+GET  /api/v1/documents?knowledge_base_id={id}
+```
+
+阶段 2 使用 `JWT_SECRET_KEY` 签发短期 Access Token。开发环境可以使用默认开发值，生产环境必须配置至少 32 个字符的随机密钥。
+
 ## 常用检查
 
 ```powershell

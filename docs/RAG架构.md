@@ -108,14 +108,14 @@ MySQL 是系统事实源，负责用户、角色、文档、版本、任务和�
 
 | 实体 | 关键字段 | 作用 |
 | --- | --- | --- |
-| `user` | `id`, `username`, `password_hash`, `role`, `status` | 本地身份；`role` 为 `personal` 或 `admin` |
-| `knowledge_base` | `id`, `owner_id`, `current_version`, `status` | 所有者隔离和版本入口 |
-| `document` | `id`, `knowledge_base_id`, `source_uri`, `content_hash`, `status` | 原始文档状态 |
-| `document_version` | `id`, `document_id`, `version`, `parser_version` | 可复现文档版本 |
-| `chunk` | `id`, `document_version_id`, `content_hash`, `ordinal`, `start_offset`, `metadata` | 最小证据单元 |
-| `ingestion_job` | `id`, `document_id`, `stage`, `status`, `error` | 入库任务、重试和失败原因 |
+| `users` | `id`, `username`, `password_hash`, `role`, `status` | 本地身份；`role` 为 `personal` 或 `admin` |
+| `knowledge_bases` | `id`, `owner_id`, `current_version`, `status`, `deleted_at` | 所有者隔离、版本入口和软删除 |
+| `documents` | `id`, `knowledge_base_id`, `source_uri`, `content_hash`, `status` | 原始文档状态 |
+| `document_versions` | `id`, `document_id`, `version`, `parser_version` | 可复现文档版本 |
+| `chunks` | `id`, `document_version_id`, `content_hash`, `ordinal`, `start_offset`, `metadata` | 最小证据单元 |
+| `ingestion_jobs` | `id`, `document_version_id`, `stage`, `status`, `error` | 入库任务、重试和失败原因 |
 | `conversation/message` | `user_id`, `content`, `metadata` | 对话和反馈关联 |
-| `query_trace` | `request_id`, `versions`, `latency`, `token_usage`, `cost` | 线上追踪和审计索引 |
+| `query_traces` | `request_id`, `versions`, `latency`, `token_usage`, `cost` | 线上追踪和审计索引 |
 | `evaluation_*` | 数据集、运行配置、Case 指标 | 离线评估结果复现 |
 
 约束：
@@ -283,8 +283,10 @@ POST rag_chunks_read/_search
 
 这些表先承担数据契约和可回放能力，评估指标计算放到后续阶段。所有 ID 使用 UUID/ULID 字符串，JSON 字段必须通过对应 Schema 校验。评估快照发布后不可修改，修改必须生成新快照版本。
 
+数据库表统一使用复数命名：`users`、`knowledge_bases`、`documents`、`document_versions`、`chunks`、`ingestion_jobs`、`evaluation_dataset_snapshots`、`evaluation_dataset_cases`、`evaluation_runs`、`evaluation_case_results` 和 `query_traces`。字段名中的单数语义，例如 `document_id`、`document_version_id` 和 `evaluation_run_id`，保持不变。
+
 ```sql
-CREATE TABLE evaluation_dataset_snapshot (
+CREATE TABLE evaluation_dataset_snapshots (
     snapshot_id CHAR(26) NOT NULL,
     dataset_id CHAR(26) NOT NULL,
     snapshot_version VARCHAR(32) NOT NULL,
@@ -304,7 +306,7 @@ CREATE TABLE evaluation_dataset_snapshot (
     KEY idx_dataset_kb (knowledge_base_id, knowledge_base_version)
 );
 
-CREATE TABLE evaluation_dataset_case (
+CREATE TABLE evaluation_dataset_cases (
     case_id CHAR(26) NOT NULL,
     snapshot_id CHAR(26) NOT NULL,
     ordinal INT UNSIGNED NOT NULL,
@@ -322,10 +324,10 @@ CREATE TABLE evaluation_dataset_case (
     UNIQUE KEY uq_snapshot_case_ordinal (snapshot_id, ordinal),
     KEY idx_case_snapshot (snapshot_id),
     CONSTRAINT fk_case_snapshot FOREIGN KEY (snapshot_id)
-      REFERENCES evaluation_dataset_snapshot (snapshot_id)
+      REFERENCES evaluation_dataset_snapshots (snapshot_id)
 );
 
-CREATE TABLE evaluation_run (
+CREATE TABLE evaluation_runs (
     run_id CHAR(26) NOT NULL,
     snapshot_id CHAR(26) NOT NULL,
     status VARCHAR(16) NOT NULL,
@@ -340,10 +342,10 @@ CREATE TABLE evaluation_run (
     KEY idx_run_snapshot (snapshot_id),
     KEY idx_run_status (status),
     CONSTRAINT fk_run_snapshot FOREIGN KEY (snapshot_id)
-      REFERENCES evaluation_dataset_snapshot (snapshot_id)
+      REFERENCES evaluation_dataset_snapshots (snapshot_id)
 );
 
-CREATE TABLE evaluation_case_result (
+CREATE TABLE evaluation_case_results (
     result_id CHAR(26) NOT NULL,
     run_id CHAR(26) NOT NULL,
     case_id CHAR(26) NOT NULL,
@@ -364,11 +366,11 @@ CREATE TABLE evaluation_case_result (
     PRIMARY KEY (result_id),
     UNIQUE KEY uq_run_case (run_id, case_id),
     KEY idx_result_request (request_id),
-    CONSTRAINT fk_result_run FOREIGN KEY (run_id) REFERENCES evaluation_run (run_id),
-    CONSTRAINT fk_result_case FOREIGN KEY (case_id) REFERENCES evaluation_dataset_case (case_id)
+    CONSTRAINT fk_result_run FOREIGN KEY (run_id) REFERENCES evaluation_runs (run_id),
+    CONSTRAINT fk_result_case FOREIGN KEY (case_id) REFERENCES evaluation_dataset_cases (case_id)
 );
 
-CREATE TABLE query_trace (
+CREATE TABLE query_traces (
     request_id CHAR(26) NOT NULL,
     trace_schema_version VARCHAR(32) NOT NULL,
     trace_type VARCHAR(16) NOT NULL,
@@ -409,7 +411,7 @@ CREATE TABLE query_trace (
 );
 ```
 
-设计取舍：`query_trace` 保存评估需要的运行清单、阶段耗时、召回快照、上下文和输出快照；生产环境可按保留周期脱敏或归档正文。`evaluation_case_result` 保存每个 Case 的结果和指标，避免每次评估都重新解析线上 Trace。候选 Chunk 先放在 `retrieval_snapshot` JSON 中，只有在数据量明显增大后再拆分为明细表。
+设计取舍：`query_traces` 保存评估需要的运行清单、阶段耗时、召回快照、上下文和输出快照；生产环境可按保留周期脱敏或归档正文。`evaluation_case_results` 保存每个 Case 的结果和指标，避免每次评估都重新解析线上 Trace。候选 Chunk 先放在 `retrieval_snapshot` JSON 中，只有在数据量明显增大后再拆分为明细表。
 
 JSON 数据契约位于 `docs/schemas/`：
 
@@ -425,7 +427,7 @@ JSON 数据契约位于 `docs/schemas/`：
 ```text
 本地上传文档（未来可增加同步 Connector）
   -> 计算 content_hash 并记录 owner_id
-  -> 创建 document_version 与 ingestion_job
+  -> 创建 document_versions 与 ingestion_jobs
   -> 本地文件存储保存原文件
   -> 文档解析（格式、编码、表格、图片、OCR）
   -> 清洗和结构化（标题层级、页码、来源位置）
@@ -456,7 +458,7 @@ JSON 数据契约位于 `docs/schemas/`：
 
 ### 5.3 最小入库任务状态机
 
-首期每个文档版本对应一个 `ingestion_job`，任务按以下状态推进：
+首期每个文档版本对应一条 `ingestion_jobs` 记录，任务按以下状态推进：
 
 ```text
 PENDING
@@ -754,6 +756,8 @@ rag:{env}:{layer}:{format_version}:{scope}:{sha256(parameters)}
 
 | 接口 | 作用 |
 | --- | --- |
+| `POST /api/v1/auth/login` | 用户登录并签发短期 JWT |
+| `GET /api/v1/auth/me` | 获取当前登录用户 |
 | `POST /api/v1/chat/completions` | 问答，支持 SSE 和非流式模式 |
 | `GET /api/v1/conversations/{id}` | 对话与引用 |
 | `POST /api/v1/messages/{id}/feedback` | 点赞、点踩和人工纠正 |

@@ -23,6 +23,7 @@ class KnowledgeBase(TimestampMixin, Base):
     description: Mapped[str | None] = mapped_column(String(500))
     current_version: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
+    deleted_at: Mapped[datetime | None] = mapped_column()
 
     owner: Mapped[User] = relationship(back_populates="knowledge_bases")
     documents: Mapped[list[Document]] = relationship(back_populates="knowledge_base")

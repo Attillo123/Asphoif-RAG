@@ -14,8 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class ErrorCode:
-    INVALID_REQUEST = 10000
-    INTERNAL_ERROR = 90000
+    INVALID_REQUEST = 10001
+    VALIDATION_ERROR = 10002
+    RESOURCE_NOT_FOUND = 10003
+    TOKEN_INVALID = 20001
+    TOKEN_EXPIRED = 20002
+    ROLE_FORBIDDEN = 20003
+    RESOURCE_FORBIDDEN = 20004
+    LOGIN_FAILED = 20005
+    INTERNAL_ERROR = 90002
     DEPENDENCY_UNAVAILABLE = 90001
 
 
@@ -82,7 +89,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
         status_code=422,
         content=api_response(
             success=False,
-            code=ErrorCode.INVALID_REQUEST,
+            code=ErrorCode.VALIDATION_ERROR,
             message="请求参数校验失败",
             error={
                 "type": "VALIDATION_ERROR",

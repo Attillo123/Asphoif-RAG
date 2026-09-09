@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -40,6 +40,10 @@ class Settings(BaseSettings):
     database_pool_size: int = Field(default=5, ge=1, le=50)
     database_max_overflow: int = Field(default=10, ge=0, le=100)
 
+    jwt_secret_key: SecretStr = SecretStr("development-only-change-me")
+    jwt_algorithm: Literal["HS256"] = "HS256"
+    jwt_access_token_expire_minutes: int = Field(default=30, ge=5, le=1440)
+
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
@@ -55,6 +59,17 @@ class Settings(BaseSettings):
                 "QWEN_EMBEDDING_DIMENSION must be 1024 for the initial OpenSearch mapping"
             )
         return value
+
+    @model_validator(mode="after")
+    def validate_production_jwt_secret(self) -> Settings:
+        secret = self.jwt_secret_key.get_secret_value()
+        if self.app_env == "prod" and (
+            secret == "development-only-change-me" or len(secret) < 32
+        ):
+            raise ValueError(
+                "JWT_SECRET_KEY must be a random value of at least 32 characters in prod"
+            )
+        return self
 
 
 @lru_cache(maxsize=1)
