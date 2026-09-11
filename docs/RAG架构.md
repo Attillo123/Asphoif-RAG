@@ -232,7 +232,9 @@ rag_chunks_read     # 线上检索读取 Alias
 rag_chunks_write    # 入库写入 Alias
 ```
 
-线上读取只访问 `rag_chunks_read`，入库写入只访问 `rag_chunks_write`。新 Embedding 模型、向量维度、分词器或 mapping 变化时创建新物理索引，完成校验后原子切换两个 Alias；不直接修改线上索引 mapping。
+线上读取只访问 `rag_chunks_read`，入库写入只访问 `rag_chunks_write`。新 Embedding 模型、向量维度、分词器或 mapping 变化时创建新物理索引，完成校验后在一次 `_aliases` 请求中原子切换两个 Alias；不直接修改线上索引 mapping。Bulk 入库和删除请求必须设置 `require_alias=true`，防止 Alias 未初始化时被 OpenSearch 自动创建同名物理索引。
+
+阶段 4 的索引初始化由 `init-opensearch` CLI 执行：物理索引不存在时创建，存在时校验 mapping、向量维度和 IK 分析器；校验通过后以 `_aliases` 原子设置读写 Alias。初始化不会自动覆盖不兼容的已有 mapping。
 
 下面分别展示应用层发送给 OpenSearch 的关键词和向量查询体；两次请求并行发送，下面的代码不是 OpenSearch `hybrid` DSL：
 
@@ -278,6 +280,8 @@ POST rag_chunks_read/_search
 ```
 
 代码块中的两个请求体由应用层并行发送，分别设置 `size=sparse_k` 与 `k=dense_k`。关键词查询使用 OpenSearch 默认 BM25；索引时使用 `ik_max_word` 细粒度切分，搜索时使用 `ik_smart` 粗粒度切分；应用层使用 RRF 生成 `final_top_k`。查询条件、Alias、分词器、过滤条件和三个 K 值写入 `retrieval_version`，保证后续评估可复现。部署前必须确认 IK 插件已安装；未安装时索引创建应失败，不能静默退回 `standard`。
+
+阶段 4 提供开发期检索接口 `POST /api/v1/retrieval/search`。它先调用千问 Embedding，再由应用层并行发起 Sparse 和 Dense 请求，返回两路原始候选；RRF 融合、超时、熔断、降级和缓存属于阶段 5。请求必须指定 `knowledge_base_id`，个人请求在两路 DSL 中加入 `owner_id`，管理员请求不加入所有者条件但仍限制知识库。
 
 ### 4.4 评估、运行清单和线上 Trace 数据表
 
@@ -485,6 +489,8 @@ PENDING
 | `FAILED` | 不可恢复或重试耗尽 | 保留错误和失败阶段，不切换 Alias |
 
 任务必须幂等：同一 `document_version_id` 重试时使用相同 Chunk ID 和索引文档 ID；写入采用批次记录，重试前允许覆盖同一 ID。发布前检查期望 Chunk 数与实际写入数一致，且所有文档都带同一知识库版本。首期不引入复杂队列，Worker 可从 MySQL 查询 `PENDING`/`RETRY_WAITING` 任务并使用数据库锁领取。
+
+首期实现约束：上传 API 只负责文件大小/扩展名校验、原文件保存和创建任务；解析、切块、Embedding 与 OpenSearch Bulk 写入由独立 Worker 执行。文本文件按 UTF-8 或 GB18030 解码，Markdown 保留标题路径，TXT 按段落解析。PDF/Word 只注册 `DocumentParser` 接口，当前任务以 `PARSER_NOT_IMPLEMENTED` 失败，不会把二进制内容送入文本解析器。开发期 Worker 可通过 CLI 手动领取单个任务或处理指定任务。
 
 ## 6. 在线问答链路
 

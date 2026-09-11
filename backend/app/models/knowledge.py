@@ -65,7 +65,7 @@ class DocumentVersion(TimestampMixin, Base):
     parser_version: Mapped[str] = mapped_column(String(32), nullable=False)
     chunk_strategy_version: Mapped[str] = mapped_column(String(32), nullable=False)
     chunk_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    status: Mapped[str] = mapped_column(String(16), nullable=False, default="pending")
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="PENDING")
     metadata_json: Mapped[dict] = mapped_column("metadata", JSON, nullable=False, default=dict)
 
     document: Mapped[Document] = relationship(back_populates="versions")
@@ -106,6 +106,7 @@ class IngestionJob(TimestampMixin, Base):
     document_version_id: Mapped[str] = mapped_column(
         ForeignKey("document_versions.id"), nullable=False
     )
+    stage: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="PENDING")
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=3)

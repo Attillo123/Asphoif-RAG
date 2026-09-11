@@ -7,9 +7,11 @@ from fastapi import FastAPI
 
 from app.api.auth import router as auth_router
 from app.api.health import router as health_router
+from app.api.ingestion import router as ingestion_router
 from app.api.knowledge import router as knowledge_router
+from app.api.retrieval import router as retrieval_router
 from app.core.config import Settings, get_settings
-from app.core.errors import register_exception_handlers
+from app.core.errors import UTF8JSONResponse, register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.db.session import dispose_engine, init_engine
@@ -32,6 +34,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         title="Asphoif RAG API",
         version="0.1.0",
         description="RAG system backend foundation",
+        default_response_class=UTF8JSONResponse,
         lifespan=lifespan,
     )
     app.state.settings = app_settings
@@ -40,6 +43,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(health_router)
     app.include_router(auth_router)
     app.include_router(knowledge_router)
+    app.include_router(ingestion_router)
+    app.include_router(retrieval_router)
     return app
 
 

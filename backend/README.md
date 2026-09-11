@@ -73,6 +73,57 @@ GET  /api/v1/documents?knowledge_base_id={id}
 
 阶段 2 使用 `JWT_SECRET_KEY` 签发短期 Access Token。开发环境可以使用默认开发值，生产环境必须配置至少 32 个字符的随机密钥。
 
+## 阶段 3 文档解析和入库
+
+阶段 3 支持 Markdown、Markdown 扩展名和 TXT。PDF、Word 已注册统一解析器接口，但当前会进入 `FAILED/PARSER_NOT_IMPLEMENTED`，不会把二进制内容误当成文本处理。
+
+先执行增量迁移：
+
+```powershell
+uv run alembic upgrade head
+```
+
+上传接口返回 `ingestion_job_id`，请求必须携带 JWT。可使用 `multipart/form-data` 的 `file` 字段，也可以直接提交文件内容并用 URL 查询参数 `file_name` 指定文件名。接口响应统一声明 UTF-8，避免 Windows PowerShell 按系统代码页错误显示中文：
+
+```text
+POST /api/v1/knowledge-bases/{knowledge_base_id}/documents
+GET  /api/v1/ingestion-jobs/{job_id}
+```
+
+上传后由独立 Worker 执行解析、切块、千问 Embedding 和 OpenSearch Bulk upsert。multipart 上传使用标准 `filename` 字段，支持中文文件名；如果直接提交原始文件内容，则使用 URL 查询参数 `file_name`，不要把中文文件名放进自定义 Header。开发期可以手动执行：
+
+```powershell
+uv run python -m app.cli process-ingestion-job --job-id <job-id>
+uv run python -m app.cli process-next-ingestion-job
+```
+
+同一知识库内相同 SHA-256 内容会幂等返回已有文档版本和任务。Chunk ID 由文档版本和序号确定，重试会覆盖同一 ID；Embedding 返回数量或维度不是 `1024` 时任务失败且不会调用 OpenSearch。
+
+## 阶段 4 OpenSearch 索引和检索
+
+先初始化物理索引和两个 Alias。该命令会创建或校验 `rag_chunks_v1`，确认 IK 分析器和 `knn_vector` 维度为 `1024`，再让 `rag_chunks_read`、`rag_chunks_write` 指向该物理索引：
+
+```powershell
+uv run python -m app.cli init-opensearch
+```
+
+入库 Bulk 请求强制要求写入 Alias；如果 Alias 尚未初始化，任务会失败而不会自动创建同名物理索引。读写 Alias 的切换在一次 `_aliases` 请求中完成。
+
+阶段 3 中处于 `INDEXING`/`RETRY_WAITING` 的任务，在 Alias 创建后可重新执行。开发期检索接口会同时执行独立的 BM25 和 k-NN 查询：
+
+```text
+POST /api/v1/retrieval/search
+```
+
+如果任务此前已经在错误的物理索引中完成并显示为 `READY`，修复 Alias 后使用 `reindex-ingestion-job` 重新写入正确的写 Alias：
+
+```powershell
+uv run python -m app.cli reindex-ingestion-job --job-id <job-id>
+uv run python -m app.cli process-ingestion-job --job-id <job-id>
+```
+
+请求体必须包含 `knowledge_base_id` 和 `query`；管理员也不能省略知识库 ID。个人用户的 `owner_id` 过滤会同时应用于 Dense 和 Sparse 查询。
+
 ## 常用检查
 
 ```powershell

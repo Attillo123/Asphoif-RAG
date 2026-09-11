@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     opensearch_index: str = "rag_chunks_v1"
     opensearch_read_alias: str = "rag_chunks_read"
     opensearch_write_alias: str = "rag_chunks_write"
+    retrieval_version: str = "app-hybrid-v1"
+    dense_k: int = Field(default=5, ge=1, le=100)
+    sparse_k: int = Field(default=5, ge=1, le=100)
+    final_top_k: int = Field(default=5, ge=1, le=100)
+    retrieval_timeout_seconds: float = Field(default=3.0, gt=0, le=30)
 
     openai_base_url: str
     openai_api_key: SecretStr
@@ -43,6 +48,19 @@ class Settings(BaseSettings):
     jwt_secret_key: SecretStr = SecretStr("development-only-change-me")
     jwt_algorithm: Literal["HS256"] = "HS256"
     jwt_access_token_expire_minutes: int = Field(default=30, ge=5, le=1440)
+
+    ingestion_max_file_size_bytes: int = Field(default=10 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    ingestion_chunk_size: int = Field(default=1000, ge=100, le=10000)
+    ingestion_chunk_overlap: int = Field(default=150, ge=0, le=2000)
+    ingestion_max_attempts: int = Field(default=3, ge=1, le=10)
+    ingestion_retry_base_seconds: int = Field(default=30, ge=1, le=3600)
+    ingestion_worker_id: str = Field(default="local-ingestion-worker", min_length=1, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_chunk_overlap(self) -> Settings:
+        if self.ingestion_chunk_overlap >= self.ingestion_chunk_size:
+            raise ValueError("INGESTION_CHUNK_OVERLAP must be smaller than INGESTION_CHUNK_SIZE")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=PROJECT_ROOT / ".env",

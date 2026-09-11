@@ -13,6 +13,10 @@ from app.core.request_id import get_request_id
 logger = logging.getLogger(__name__)
 
 
+class UTF8JSONResponse(JSONResponse):
+    media_type = "application/json; charset=utf-8"
+
+
 class ErrorCode:
     INVALID_REQUEST = 10001
     VALIDATION_ERROR = 10002
@@ -22,6 +26,15 @@ class ErrorCode:
     ROLE_FORBIDDEN = 20003
     RESOURCE_FORBIDDEN = 20004
     LOGIN_FAILED = 20005
+    DOCUMENT_TYPE_UNSUPPORTED = 30001
+    DOCUMENT_TOO_LARGE = 30002
+    INGESTION_NOT_READY = 30003
+    INDEX_PUBLISH_FAILED = 30004
+    PARSER_NOT_IMPLEMENTED = 30005
+    INGESTION_JOB_NOT_RETRYABLE = 30006
+    EMBEDDING_UNAVAILABLE = 40001
+    RETRIEVAL_UNAVAILABLE = 40002
+    RETRIEVAL_TIMEOUT = 40004
     INTERNAL_ERROR = 90002
     DEPENDENCY_UNAVAILABLE = 90001
 
@@ -69,7 +82,7 @@ def api_response(
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return JSONResponse(
+    return UTF8JSONResponse(
         status_code=exc.status_code,
         content=api_response(
             success=False,
@@ -85,7 +98,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    return JSONResponse(
+    return UTF8JSONResponse(
         status_code=422,
         content=api_response(
             success=False,
@@ -102,7 +115,7 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled application error")
-    return JSONResponse(
+    return UTF8JSONResponse(
         status_code=500,
         content=api_response(
             success=False,
