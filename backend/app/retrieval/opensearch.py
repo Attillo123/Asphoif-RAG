@@ -254,7 +254,7 @@ def build_sparse_query(
 ) -> dict[str, Any]:
     return {
         "size": sparse_k,
-        "_source": True,
+        "_source": {"excludes": ["content_vector"]},
         "query": {"bool": {"must": [{"match": {"content": query}}], "filter": filters}},
     }
 
@@ -264,7 +264,7 @@ def build_dense_query(
 ) -> dict[str, Any]:
     return {
         "size": dense_k,
-        "_source": True,
+        "_source": {"excludes": ["content_vector"]},
         "query": {
             "knn": {
                 "content_vector": {

@@ -243,6 +243,7 @@ rag_chunks_write    # 入库写入 Alias
 POST rag_chunks_read/_search
 {
   "size": 5,
+  "_source": { "excludes": ["content_vector"] },
   "query": {
     "bool": {
       "must": [{ "match": { "content": "退款多久到账？" } }],
@@ -259,6 +260,7 @@ POST rag_chunks_read/_search
 POST rag_chunks_read/_search
 {
   "size": 5,
+  "_source": { "excludes": ["content_vector"] },
   "query": {
     "knn": {
       "content_vector": {
@@ -282,6 +284,8 @@ POST rag_chunks_read/_search
 代码块中的两个请求体由应用层并行发送，分别设置 `size=sparse_k` 与 `k=dense_k`。关键词查询使用 OpenSearch 默认 BM25；索引时使用 `ik_max_word` 细粒度切分，搜索时使用 `ik_smart` 粗粒度切分；应用层使用 RRF 生成 `final_top_k`。查询条件、Alias、分词器、过滤条件和三个 K 值写入 `retrieval_version`，保证后续评估可复现。部署前必须确认 IK 插件已安装；未安装时索引创建应失败，不能静默退回 `standard`。
 
 阶段 4 提供开发期检索接口 `POST /api/v1/retrieval/search`。它先调用千问 Embedding，再由应用层并行发起 Sparse 和 Dense 请求，返回两路原始候选；RRF 融合、超时、熔断、降级和缓存属于阶段 5。请求必须指定 `knowledge_base_id`，个人请求在两路 DSL 中加入 `owner_id`，管理员请求不加入所有者条件但仍限制知识库。
+
+检索响应默认排除 `source.content_vector`，保留文本、元数据、排名和分数；阶段 5 的融合结果同时保留召回通道及各路排名和分数。两路查询通过 `_source.excludes` 过滤返回字段，不影响索引中的向量存储和 k-NN 计算。检索结果缓存格式使用 `v2`，避免命中包含向量的旧 `v1` 缓存；Embedding 缓存仍保存向量。
 
 ### 4.4 评估、运行清单和线上 Trace 数据表
 
@@ -543,7 +547,7 @@ PENDING
 - Metadata filtering：`owner_id`、知识库、版本和可选业务标签；
 - Business retrieval：FAQ、实体、产品编码或受控业务 API。
 
-各路结果使用 RRF 或可配置加权融合，之后按 `chunk_id` 去重、合并相邻 Chunk、过滤低分结果，并记录每个候选的召回通道和原始分数。
+各路结果使用 RRF 或可配置加权融合，之后按 `chunk_id` 去重、合并相邻 Chunk、过滤低分结果，并记录每个候选的召回通道和原始分数。阶段 5 首期固定实现 RRF v1，`rrf_k=60`，结果截断到 `final_top_k`；Dense、Sparse 和 Embedding 分别受独立熔断器保护，Dense/Sparse 共用检索 Deadline。
 
 融合权重、候选数、最低分数和 Rerank 阈值必须配置化并写入 `retrieval_version`，以支持离线评估和线上回放。
 
@@ -606,6 +610,8 @@ rag:{env}:{layer}:{format_version}:{scope}:{sha256(parameters)}
 | 无结果/拒答 | 启用 | 1-5 分钟 | 防止重复打穿检索和 LLM |
 
 热点 Key 使用分布式锁或 singleflight；可用逻辑过期和后台刷新降低击穿。答案缓存命中后仍需做版本、权限和引用校验。
+
+阶段 5 的最小实现启用 Embedding 缓存和检索结果缓存，采用 Cache Aside、TTL 抖动和 Redis 短锁。Redis 只作为加速层：读取、写入或锁操作失败时继续主链路并记录 `CACHE_UNAVAILABLE`。最终答案缓存留到 Chat 阶段，评估回放默认关闭。阶段 5 的 Trace 关联字段迁移由 `0004_widen_trace_request_id` 完成。
 
 ## 8. 异常、超时与降级
 

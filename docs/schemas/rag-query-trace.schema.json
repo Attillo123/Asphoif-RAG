@@ -87,6 +87,7 @@
         "chunk_strategy_version": { "type": "string", "minLength": 1 },
         "embedding_model": { "type": "string", "minLength": 1 },
         "embedding_dimension": { "type": "integer", "minimum": 1 },
+        "index_version": { "type": "string", "minLength": 1 },
         "retrieval_version": { "type": "string", "minLength": 1 },
         "fusion_strategy": { "type": "string", "minLength": 1 },
         "top_k": { "type": "integer", "minimum": 1 },

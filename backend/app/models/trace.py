@@ -17,7 +17,7 @@ class QueryTrace(Base):
         Index("ix_query_traces_evaluation", "evaluation_run_id", "evaluation_case_id"),
     )
 
-    request_id: Mapped[str] = mapped_column(String(26), primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     trace_schema_version: Mapped[str] = mapped_column(String(32), nullable=False)
     trace_type: Mapped[str] = mapped_column(String(16), nullable=False)
     evaluation_run_id: Mapped[str | None] = mapped_column(String(26))

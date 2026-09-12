@@ -31,6 +31,18 @@ class Settings(BaseSettings):
     sparse_k: int = Field(default=5, ge=1, le=100)
     final_top_k: int = Field(default=5, ge=1, le=100)
     retrieval_timeout_seconds: float = Field(default=3.0, gt=0, le=30)
+    chat_first_token_timeout_seconds: float = Field(default=10.0, gt=0, le=300)
+    chat_idle_timeout_seconds: float = Field(default=15.0, gt=0, le=120)
+    chat_total_timeout_seconds: float = Field(default=120.0, gt=0, le=300)
+    chat_context_max_chars: int = Field(default=12000, ge=1000, le=100000)
+    prompt_version: str = "prompt-v1"
+    embedding_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    retrieval_cache_ttl_seconds: int = Field(default=1800, ge=30, le=86400)
+    embedding_cache_ttl_seconds: int = Field(default=172800, ge=300, le=604800)
+    circuit_failure_threshold: int = Field(default=5, ge=1, le=100)
+    circuit_failure_window_seconds: float = Field(default=30.0, gt=0, le=300)
+    circuit_open_seconds: float = Field(default=15.0, gt=0, le=600)
+    circuit_half_open_max_calls: int = Field(default=2, ge=1, le=10)
 
     openai_base_url: str
     openai_api_key: SecretStr

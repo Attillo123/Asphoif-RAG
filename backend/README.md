@@ -124,6 +124,33 @@ uv run python -m app.cli process-ingestion-job --job-id <job-id>
 
 请求体必须包含 `knowledge_base_id` 和 `query`；管理员也不能省略知识库 ID。个人用户的 `owner_id` 过滤会同时应用于 Dense 和 Sparse 查询。
 
+## 阶段 5 并行检索、融合和缓存
+
+先执行增量迁移：
+
+```powershell
+uv run alembic upgrade head
+```
+
+阶段 5 使用共享 Deadline 并行执行 Dense/Sparse，使用 RRF v1 融合，并对 Embedding、Dense、Sparse 分别执行熔断。Redis Cache Aside 缓存 Query Embedding 和检索结果；Redis 不可用时旁路主链路并记录 `CACHE_UNAVAILABLE`。响应中的 `fused` 是 RRF 结果，`status` 为 `completed` 或 `degraded`。
+
+```json
+{
+  "query": "人工智能与就业",
+  "knowledge_base_id": "你的知识库 ID",
+  "dense_k": 5,
+  "sparse_k": 5
+}
+```
+
+最终答案缓存暂留到阶段 6 Chat 链路。
+
+## 阶段 6 Chat 和 SSE
+
+问答接口为 `POST /api/v1/chat/completions`，请求需携带 JWT，使用 `Accept: text/event-stream`。请求体包含 `query`、`knowledge_base_id`，可选 `conversation_id`、`dense_k` 和 `sparse_k`。服务端先检索，再调用 `OPENAI_BASE_URL/chat/completions`，通过 SSE 返回 `start`、`citation`、`delta`、`end` 或 `error`；POST 流推荐使用 Fetch API 读取 `ReadableStream`。
+
+`dense`、`sparse`、`fused` 的 `source` 默认不返回 `content_vector`，保留文本和元数据，排名及分数字段继续返回。重启后端后生效，无需重建索引或执行数据库迁移。检索结果缓存改用 `v2`，首次请求可能重新检索；旧 `v1` 缓存自然过期，无需手动清理，Embedding 缓存仍可复用。
+
 ## 常用检查
 
 ```powershell

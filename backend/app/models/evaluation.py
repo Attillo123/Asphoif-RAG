@@ -84,7 +84,7 @@ class EvaluationCaseResult(TimestampMixin, Base):
     case_id: Mapped[str] = mapped_column(
         ForeignKey("evaluation_dataset_cases.case_id"), nullable=False
     )
-    request_id: Mapped[str | None] = mapped_column(String(26), index=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(16), nullable=False)
     retrieved_chunk_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     context_snapshot: Mapped[dict | None] = mapped_column(JSON)
