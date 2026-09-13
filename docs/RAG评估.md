@@ -125,3 +125,33 @@ RAGAS/DeepEval 本质上通常还是 LLM-as-judge，因此建议抽取一部分�
 平均返回 Chunk 数
 用户追问率
 用户点赞/点踩
+
+## 8. 评估方案和评估器分工
+
+本项目采用“确定性指标 + RAGAS/LLM-as-judge + 人工评估”的组合，而不是把 RAGAS 当作唯一评分来源。RAGAS 负责批量评估上下文和答案质量；检索排序指标根据 gold chunk ID 直接计算；引用正确性、拒答质量等企业规则通过自定义评估器补充；抽样样本由人工复核，用于校准 LLM-as-judge 并处理高风险结论。
+
+| 评估器 | 负责内容 | 结果来源 |
+| --- | --- | --- |
+| RetrievalMetricsEvaluator | Recall@K、Precision@K、MRR、nDCG@K、Hit@K | gold_chunk_ids 与 retrieved_chunk_ids 的代码计算 |
+| RagasEvaluator | Context Relevance、Context Precision/Recall、Faithfulness、Answer Relevance、Answer Correctness | RAGAS、固定 judge 模型和评分提示词 |
+| CitationEvaluator | Citation Correctness、Citation Completeness、证据覆盖 | 引用与 Chunk 的规则校验，必要时由 LLM 辅助 |
+| AbstentionEvaluator | 无答案时是否拒答、是否出现无证据肯定回答 | is_unanswerable、答案和上下文的规则/LLM 判断 |
+| HumanReviewEvaluator | 高风险、低置信度和抽样 Case 的人工评分 | 人工标注及校准记录 |
+
+RAGAS、DeepEval 和 ARES 均通过 `Evaluator` 适配器接入。运行清单必须记录工具名称、版本、judge 模型、评分提示词版本和失败原因。人工评分作为独立字段保存，并记录评审人、时间和标注规范版本。
+
+## 9. 评估运行和平台能力
+
+一次 `Evaluation Run` 固定一个不可变 Dataset Snapshot，并按 Case 读取线上 Trace 或执行关闭答案缓存的回放。不同评估器的结果分别保存，不把来源不同的分数混成无法解释的总分。
+
+阶段 8 的系统应支持：
+
+1. 创建、发布和管理不可变 Dataset Snapshot；
+2. 管理 Case 及其标准答案、gold chunk、问题类型和不可回答标记；
+3. 创建、执行、取消和查询 Evaluation Run；
+4. 将线上 Trace 与 Case 绑定，或执行关闭答案缓存的回放；
+5. 展示自动指标、RAGAS 指标、人工评分和诊断矩阵；
+6. 比较不同 run_manifest 的模型、Prompt、Embedding、Chunk、Top-K 和融合策略；
+7. 导出 Case 结果和回归对比报告。
+
+每个 Case 至少保留 `question`、`reference_answer`、`gold_chunk_ids`、`question_type`、`is_unanswerable`、`requires_citation`、知识库版本和数据集版本。评估结果至少保留检索结果、上下文快照、答案、引用、各评估器分数、诊断结论、延迟、Token、成本和错误信息。

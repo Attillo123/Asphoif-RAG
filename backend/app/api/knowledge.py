@@ -3,12 +3,16 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import api_response
 from app.core.security import get_current_user
+from app.core.config import get_settings
 from app.db.session import get_db_session
 from app.models.user import User
+from app.models.knowledge import Document, DocumentVersion
+from app.ingestion.storage import LocalFileStorage
 from app.schemas.knowledge import (
     DocumentResponse,
     KnowledgeBaseCreateRequest,
@@ -103,3 +107,28 @@ async def list_documents(
         for item in result.scalars()
     ]
     return api_response(success=True, code=0, message="ok", data={"items": data})
+
+
+@router.get("/documents/{document_id}", response_model=dict[str, Any], summary="查询文档内容")
+async def get_document(
+    document_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await session.execute(visible_documents(user).where(Document.id == document_id))
+    document = result.scalar_one_or_none()
+    if document is None:
+        from app.core.errors import AppError, ErrorCode
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="文档不存在", error_type="RESOURCE_NOT_FOUND", status_code=404)
+    version = await session.scalar(
+        select(DocumentVersion).where(DocumentVersion.document_id == document.id).order_by(DocumentVersion.version.desc()).limit(1)
+    )
+    content = None
+    if version and version.storage_uri:
+        try:
+            content = (await LocalFileStorage(get_settings().local_file_root).read(version.storage_uri)).decode("utf-8", errors="replace")
+        except (OSError, ValueError):
+            content = None
+    payload = DocumentResponse.model_validate(document).model_dump(mode="json")
+    payload.update(content=content, version=version.version if version else None)
+    return api_response(success=True, code=0, message="ok", data=payload)

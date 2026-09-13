@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     app_name: str = "asphoif-rag"
     app_env: Literal["dev", "test", "prod"] = "dev"
     api_prefix: str = "/api/v1"
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
     database_url: str
     redis_url: str
@@ -52,6 +53,10 @@ class Settings(BaseSettings):
     qwen_embedding_model: str
     qwen_embedding_dimension: int = Field(default=1024, ge=256, le=2560)
     rerank_model: str | None = None
+    evaluation_judge_base_url: str | None = None
+    evaluation_judge_api_key: SecretStr | None = None
+    evaluation_judge_model: str | None = None
+    evaluation_judge_prompt_version: str = "ragas-default-v1"
 
     healthcheck_timeout_seconds: float = Field(default=3.0, gt=0, le=30)
     database_pool_size: int = Field(default=5, ge=1, le=50)

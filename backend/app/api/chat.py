@@ -4,12 +4,15 @@ import asyncio
 import json
 import time
 import uuid
+import hashlib
+import re
 from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.retrieval import search as retrieval_search
@@ -19,9 +22,23 @@ from app.core.request_id import get_request_id
 from app.core.security import get_current_user
 from app.db.session import get_db_session
 from app.models.user import User
+from app.models.trace import QueryTrace
 from app.schemas.retrieval import ChatRequest, RetrievalRequest
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+
+_PII_PATTERNS = (
+    (re.compile(r"(?<!\d)1[3-9]\d{9}(?!\d)"), "[PHONE]"),
+    (re.compile(r"(?<!\d)\d{17}[\dXx](?!\d)"), "[ID_NUMBER]"),
+)
+
+
+def _redact(value: str, limit: int) -> str:
+    text = value or ""
+    for pattern, replacement in _PII_PATTERNS:
+        text = pattern.sub(replacement, text)
+    text = text[:limit]
+    return text + ("…[TRUNCATED]" if len(value or "") > limit else "")
 
 
 def _sse(event: str, seq: int, payload: dict[str, Any]) -> str:
@@ -99,6 +116,18 @@ async def completions(
     trace_id = get_request_id() or f"req_{uuid.uuid4().hex}"
     conversation_id = payload.conversation_id or uuid.uuid4().hex
     started = time.monotonic()
+    query_hash = hashlib.sha256(payload.query.strip().encode("utf-8")).hexdigest()
+
+    async def update_trace(**values: Any) -> None:
+        try:
+            trace = await session.scalar(select(QueryTrace).where(QueryTrace.request_id == trace_id))
+            if trace is None:
+                return
+            for key, value in values.items():
+                setattr(trace, key, value)
+            await session.commit()
+        except Exception:
+            await session.rollback()
 
     async def stream() -> AsyncIterator[str]:
         seq = 0
@@ -117,6 +146,15 @@ async def completions(
                 settings=settings,
             )
             context, citations = _context(retrieval, settings.chat_context_max_chars)
+            await update_trace(
+                conversation_id=conversation_id,
+                query_hash=query_hash,
+                output_snapshot={
+                    "answer": "",
+                    "citations": citations,
+                    "citation_validation": "skipped",
+                },
+            )
             seq += 1
             yield _sse(
                 "start",
@@ -149,6 +187,7 @@ async def completions(
             # rather than including retrieval and context construction latency.
             chat_started = time.monotonic()
             first_delta = True
+            first_token_ms: int | None = None
             async for delta in _upstream_events(
                 settings, messages, settings.chat_total_timeout_seconds
             ):
@@ -159,17 +198,30 @@ async def completions(
                 ):
                     raise TimeoutError("chat first token timeout")
                 first_delta = False
+                if first_token_ms is None:
+                    first_token_ms = int((time.monotonic() - started) * 1000)
                 answer.append(delta)
                 seq += 1
                 yield _sse("delta", seq, {"text": delta})
             seq += 1
+            final_answer = _redact("".join(answer), 10000)
+            await update_trace(
+                status="degraded" if retrieval["data"].get("degraded_reasons") else "completed",
+                first_token_latency_ms=first_token_ms,
+                total_latency_ms=int((time.monotonic() - started) * 1000),
+                output_snapshot={
+                    "answer": final_answer,
+                    "citations": citations,
+                    "citation_validation": "skipped",
+                },
+            )
             yield _sse(
                 "end",
                 seq,
                 {
                     "trace_id": trace_id,
                     "conversation_id": conversation_id,
-                    "answer": "".join(answer),
+                    "answer": final_answer,
                     "citations": citations,
                     "status": retrieval["data"]["status"],
                     "degraded_reasons": retrieval["data"].get("degraded_reasons", []),
@@ -179,6 +231,12 @@ async def completions(
         except asyncio.CancelledError:
             raise
         except Exception as exc:
+            await update_trace(
+                status="failed",
+                error_code="CHAT_GENERATION_FAILED",
+                total_latency_ms=int((time.monotonic() - started) * 1000),
+                output_snapshot={"answer": _redact("".join(answer), 10000), "citations": [], "citation_validation": "skipped"},
+            )
             seq += 1
             yield _sse(
                 "error",

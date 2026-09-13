@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
@@ -11,6 +12,7 @@ from app.api.health import router as health_router
 from app.api.ingestion import router as ingestion_router
 from app.api.knowledge import router as knowledge_router
 from app.api.retrieval import router as retrieval_router
+from app.api.evaluation import router as evaluation_router
 from app.core.config import Settings, get_settings
 from app.core.errors import UTF8JSONResponse, register_exception_handlers
 from app.core.logging import configure_logging
@@ -39,6 +41,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = app_settings
+    cors_origins = [
+        origin.strip()
+        for origin in app_settings.cors_origins.split(",")
+        if origin.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.add_middleware(RequestIdMiddleware)
     register_exception_handlers(app)
     app.include_router(health_router)
@@ -47,6 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(knowledge_router)
     app.include_router(ingestion_router)
     app.include_router(retrieval_router)
+    app.include_router(evaluation_router)
     return app
 
 

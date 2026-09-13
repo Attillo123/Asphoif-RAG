@@ -34,3 +34,5 @@ class DocumentResponse(BaseModel):
     status: str
     created_at: datetime
     updated_at: datetime
+    content: str | None = None
+    version: int | None = None

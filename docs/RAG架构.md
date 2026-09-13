@@ -1014,3 +1014,23 @@ RERANK_MODEL=rerank-model
 6. 规模目标：文档数、Chunk 数、并发、P95 延迟和请求成本预算。
 
 当前测试阶段按“OpenSearch + MySQL + Redis + 本地文件存储 + OpenAI-compatible API”作为默认基线。OpenSearch 同时承担向量和全文检索，覆盖当前优化文档中的混合检索、个人/管理员权限、分层缓存、降级和评估闭环。
+
+## 附录 A：阶段 8 评估实现约束
+
+阶段 8 的评估服务采用可插拔评估器编排：确定性检索指标由应用代码计算，RAGAS 负责上下文和答案质量，引用/拒答等企业规则由自定义评估器实现，人工评估用于抽样校准和高风险复核。RAGAS、DeepEval、ARES 只能作为评估器实现，不能替代 Dataset Snapshot、Evaluation Run、Trace 绑定、权限控制和结果存储。
+
+```text
+Dataset Snapshot + Case
+        -> Trace 绑定或关闭缓存的回放
+        -> RetrievalMetricsEvaluator
+        -> RagasEvaluator
+        -> Citation/Abstention Evaluator
+        -> Human Review
+        -> Case Results / Aggregate Metrics / Regression Report
+```
+
+评估器必须实现统一的 `evaluate(case, trace) -> metrics, diagnosis` 契约，并在 `run_manifest` 中记录评估器名称、版本、judge 模型、评分提示词版本和运行参数。每个评估器的原始分数、错误和跳过原因分别保存，聚合结果同时保留样本数和缺失率。
+
+评估回放默认关闭最终答案缓存，且必须使用与线上相同的权限过滤、知识库版本、Chunk 策略和检索配置。评估 Trace 与线上 Trace 使用相同 Schema，通过 `trace_type` 区分 `online`、`replay` 和 `evaluation`；原始 Prompt、未脱敏问题和未脱敏答案不落库。
+
+阶段 8 前端至少提供数据集/Case 管理、评估运行、Case 结果、指标对比、人工评分和 Trace 历史查询入口。当前开发期控制台的最近一次 Trace 摘要只能用于手工联调，不能视为完整评估平台。

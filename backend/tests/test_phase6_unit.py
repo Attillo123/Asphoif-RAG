@@ -1,6 +1,17 @@
 import json
 
-from app.api.chat import _context, _sse
+from app.api.chat import _context, _redact, _sse
+
+
+def test_trace_redaction_masks_phone_and_id_and_marks_truncation() -> None:
+    value = "联系 13812345678，证件 110101199001011234，敏感内容"
+    redacted = _redact(value, 100)
+    assert "13812345678" not in redacted
+    assert "110101199001011234" not in redacted
+    assert "[PHONE]" in redacted
+    assert "[ID_NUMBER]" in redacted
+    assert "[TRUNCATED]" not in redacted
+    assert "[TRUNCATED]" in _redact(value, 20)
 
 
 def test_sse_frame_is_json_and_sequence_numbered() -> None:
