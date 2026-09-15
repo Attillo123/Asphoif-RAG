@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings, get_settings
@@ -11,7 +11,7 @@ from app.core.errors import AppError, ErrorCode, api_response
 from app.core.security import get_current_user
 from app.db.session import get_db_session
 from app.ingestion.storage import LocalFileStorage
-from app.models.knowledge import IngestionJob
+from app.models.knowledge import Document, DocumentVersion, IngestionJob
 from app.models.user import User
 from app.schemas.ingestion import DocumentUploadResponse, IngestionJobResponse
 from app.services.ingestion import create_ingestion_job
@@ -96,6 +96,40 @@ async def get_ingestion_job(
         message="ok",
         data=IngestionJobResponse.model_validate(job).model_dump(mode="json"),
     )
+
+
+@router.get("/knowledge-bases/{knowledge_base_id}/ingestion-jobs", response_model=dict[str, Any], summary="查询知识库入库任务")
+async def list_ingestion_jobs(
+    knowledge_base_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    await get_visible_knowledge_base(session, user, knowledge_base_id)
+    statement = (
+        select(IngestionJob, DocumentVersion.document_id)
+        .join(DocumentVersion, DocumentVersion.id == IngestionJob.document_version_id)
+        .join(Document, Document.id == DocumentVersion.document_id)
+        .where(Document.knowledge_base_id == knowledge_base_id, Document.status != "deleted")
+        .order_by(desc(IngestionJob.created_at))
+        .limit(limit)
+    )
+    rows = (await session.execute(statement)).all()
+    items = []
+    for job, document_id in rows:
+        items.append({
+            "ingestion_job_id": job.id,
+            "document_id": document_id,
+            "document_version_id": job.document_version_id,
+            "status": job.status,
+            "stage": job.stage,
+            "error": job.error_message,
+            "error_code": job.error_code,
+            "attempt_count": job.attempt_count,
+            "created_at": job.created_at,
+            "updated_at": job.updated_at,
+        })
+    return api_response(success=True, code=0, message="ok", data={"items": items})
 
 
 async def get_visible_knowledge_base_for_job(

@@ -40,7 +40,7 @@ function ChatPanel({ kb, onTrace }: { kb: string; onTrace: (data: EventData) => 
   return <div className="panel"><div className="panel-heading"><div><span className="eyebrow">ONLINE QA</span><h2>Chat 流式问答</h2></div><span className={`status-pill ${busy ? 'running' : ''}`}>{busy ? '生成中' : '就绪'}</span></div><div className="answer-box">{answer || <span className="placeholder">输入问题，验证检索、生成与引用链路…</span>}</div>{citations.length > 0 && <div className="citations"><h3>引用来源</h3>{citations.map((c, i) => <div className="citation" key={`${c.chunk_id}-${i}`}><b>[{i + 1}]</b><span>{c.file_name || c.document_id || c.chunk_id}</span><code>{c.chunk_id}</code></div>)}</div>}<textarea value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send(); }} placeholder="例如：退款多久到账？（Ctrl/⌘ + Enter 发送）" /><button className="primary" disabled={busy || !kb || !query.trim()} onClick={send}>{busy ? '生成中…' : '发送问题'}</button>{error && <div className="alert error">{error}</div>}</div>;
 }
 
-function UploadPanel({ kb, jobs, onUpload }: { kb: string; jobs: Job[]; onUpload: (file: File) => void }) { return <div className="panel"><div className="panel-heading"><div><span className="eyebrow">INGESTION</span><h2>文档上传与任务</h2></div></div><label className="dropzone"><span className="upload-icon">↑</span><b>选择 Markdown 或 TXT 文件</b><small>上传后自动创建入库任务并轮询状态</small><input type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" disabled={!kb} onChange={e => { const file = e.target.files?.[0]; if (file) onUpload(file); e.currentTarget.value = ''; }} /></label>{!kb && <p className="muted">请先在左侧选择知识库</p>}<div className="job-list">{jobs.map(job => <div className="job-card" key={job.ingestion_job_id}><div><b>{job.document_id || '新文档'}</b><code>{job.ingestion_job_id}</code></div><span className={`job-status ${job.status.toLowerCase()}`}>{job.status}{job.stage ? ` · ${job.stage}` : ''}</span>{job.error && <small className="error">{job.error}</small>}</div>)}</div></div>; }
+function UploadPanel({ kb, jobs, onUpload }: { kb: string; jobs: Job[]; onUpload: (file: File) => void }) { return <div className="panel"><div className="panel-heading"><div><span className="eyebrow">INGESTION</span><h2>文档上传与任务</h2></div></div><label className="dropzone"><span className="upload-icon">↑</span><b>选择 Markdown 或 TXT 文件</b><small>上传后创建一个入库任务；任务由独立 Worker 执行解析、切块、Embedding 和索引</small><input type="file" accept=".md,.markdown,.txt,text/plain,text/markdown" disabled={!kb} onChange={e => { const file = e.target.files?.[0]; if (file) onUpload(file); e.currentTarget.value = ''; }} /></label>{!kb && <p className="muted">请先在左侧选择知识库</p>}{kb && <p className="muted">当前知识库最近任务：{jobs.length} 个。若状态长时间保持 PENDING，请启动入库 Worker。</p>}<div className="job-list">{jobs.map(job => <div className="job-card" key={job.ingestion_job_id}><div><b>{job.document_id || '新文档'}</b><code>{job.ingestion_job_id}</code></div><span className={`job-status ${job.status.toLowerCase()}`}>{job.status}{job.stage ? ` · ${job.stage}` : ''}</span>{job.error && <small className="error">{job.error}</small>}</div>)}</div></div>; }
 
 function SearchPanel({ kb, onTrace }: { kb: string; onTrace: (data: EventData) => void }) { const [query, setQuery] = useState(''); const [result, setResult] = useState<any>(); const [loading, setLoading] = useState(false); const run = async () => { if (!kb || !query.trim()) return; setLoading(true); try { const data = await api('/api/v1/retrieval/search', { method: 'POST', body: JSON.stringify({ query: query.trim(), knowledge_base_id: kb }) }); setResult(data); onTrace({ event: 'retrieval', ...data }); } catch (e: any) { onTrace({ event: 'error', message: e.message }); } finally { setLoading(false); } }; return <div className="panel"><div className="panel-heading"><div><span className="eyebrow">RETRIEVAL</span><h2>检索调试</h2></div></div><textarea value={query} onChange={e => setQuery(e.target.value)} placeholder="输入检索问题…" /><button className="primary" disabled={!kb || loading || !query.trim()} onClick={run}>{loading ? '检索中…' : '执行检索'}</button>{result && <div className="retrieval-result"><div className="metric-row"><Metric label="状态" value={result.status} /><Metric label="Dense" value={result.dense?.length ?? 0} /><Metric label="Sparse" value={result.sparse?.length ?? 0} /><Metric label="融合" value={result.fused?.length ?? 0} /></div><pre>{JSON.stringify(result, null, 2)}</pre></div>}</div>; }
 function Metric({ label, value }: { label: string; value: any }) { return <div className="metric"><span>{label}</span><b>{value}</b></div>; }
@@ -70,7 +70,72 @@ function EvaluationPanel() {
     item={item}
     caseData={reviewCases[item.case_id]}
     save={payload => api(`/api/v1/evaluations/runs/${item.run_id}/results/${item.id}/review`, { method: 'POST', body: JSON.stringify(payload) })}
-  />)}</>}{message&&<p className="muted">{message}</p>}</div> }function App() { const [user, setUser] = useState<User>(); const [kbs, setKbs] = useState<KnowledgeBase[]>([]); const [kb, setKb] = useState(''); const [tab, setTab] = useState('chat'); const [jobs, setJobs] = useState<Job[]>([]); const [trace, setTrace] = useState<EventData>(); const [error, setError] = useState(''); const load = async () => { try { const data = await api<{ items: KnowledgeBase[] }>('/api/v1/knowledge-bases'); setKbs(data.items); if (!kb && data.items[0]) setKb(data.items[0].id); } catch (e: any) { setError(e.message); } }; useEffect(() => { if (user) load(); }, [user]); const upload = async (file: File) => { try { const form = new FormData(); form.append('file', file); const job = await api<Job>(`/api/v1/knowledge-bases/${kb}/documents`, { method: 'POST', body: form }); setJobs(v => [job, ...v]); const poll = async () => { try { const state = await api<Job>(`/api/v1/ingestion-jobs/${job.ingestion_job_id}`); setJobs(v => v.map(item => item.ingestion_job_id === job.ingestion_job_id ? { ...item, ...state } : item)); if (!['READY', 'FAILED'].includes(state.status)) window.setTimeout(poll, 2000); } catch (e: any) { setError(e.message); } }; poll(); } catch (e: any) { setError(e.message); } }; if (!user) return <Login onLogin={setUser} />; const tabs = [['chat', 'Chat 问答'], ['upload', '文档入库'], ['documents', '文档浏览'], ['search', '检索调试'], ['trace', 'Trace 观测'], ['evaluation', '评估回归']]; return <main className="app-shell"><header className="topbar"><div className="logo"><span>AR</span><b>Asphoif RAG</b></div><div className="top-actions"><span>{user.username} · {user.role}</span><button onClick={() => { localStorage.clear(); setUser(undefined); }}>退出登录</button></div></header><div className="workspace"><KnowledgeSidebar kbs={kbs} selected={kb} onSelect={setKb} onRefresh={load} onDelete={async id => { if (window.confirm('确定删除当前知识库吗？')) { try { await api(`/api/v1/knowledge-bases/${id}`, { method: 'DELETE' }); setKb(''); await load(); } catch (e: any) { setError(e.message); } } }} onCreate={async name => { try { await api('/api/v1/knowledge-bases', { method: 'POST', body: JSON.stringify({ name }) }); load(); } catch (e: any) { setError(e.message); } }} /><section className="content"><div className="content-tabs">{tabs.map(([id, label]) => <button className={tab === id ? 'active' : ''} onClick={() => setTab(id)} key={id}>{label}</button>)}</div><div className="kb-banner">当前知识库：<b>{kbs.find(x => x.id === kb)?.name || '未选择'}</b><span>{kb || '请选择知识库后开始测试'}</span></div>{tab === 'chat' && <ChatPanel kb={kb} onTrace={setTrace} />}{tab === 'upload' && <UploadPanel kb={kb} jobs={jobs} onUpload={upload} />} {tab === 'documents' && <DocumentsPanel kb={kb} />}{tab === 'search' && <SearchPanel kb={kb} onTrace={setTrace} />}{tab === 'trace' && <TracePanel trace={trace} />}{tab === 'evaluation' && <EvaluationPanel />} {error && <div className="alert error global-error">{error}<button onClick={() => setError('')}>×</button></div>}</section></div></main>; }
+  />)}</>}{message&&<p className="muted">{message}</p>}</div> }function App() {
+  const [user, setUser] = useState<User>();
+  const [authChecking, setAuthChecking] = useState(true);
+  const [kbs, setKbs] = useState<KnowledgeBase[]>([]);
+  const [kb, setKb] = useState('');
+  const [tab, setTab] = useState('chat');
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [trace, setTrace] = useState<EventData>();
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) { setAuthChecking(false); return; }
+    api<User>('/api/v1/auth/me')
+      .then(setUser)
+      .catch(() => localStorage.removeItem('token'))
+      .finally(() => setAuthChecking(false));
+  }, []);
+
+  const load = async () => {
+    try {
+      const data = await api<{ items: KnowledgeBase[] }>('/api/v1/knowledge-bases');
+      setKbs(data.items || []);
+      setKb(current => data.items.some(item => item.id === current) ? current : (data.items[0]?.id || ''));
+    } catch (e: any) { setError(e.message); }
+  };
+  const loadJobs = async (knowledgeBaseId: string) => {
+    if (!knowledgeBaseId) { setJobs([]); return; }
+    try {
+      const data = await api<{ items: Job[] }>(`/api/v1/knowledge-bases/${knowledgeBaseId}/ingestion-jobs?limit=50`);
+      setJobs(data.items || []);
+    } catch (e: any) { setError(e.message); }
+  };
+  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { if (user && kb) loadJobs(kb); }, [user, kb]);
+
+  const pollJob = (job: Job) => {
+    let attempts = 0;
+    const poll = async () => {
+      try {
+        const state = await api<Job>(`/api/v1/ingestion-jobs/${job.ingestion_job_id}`);
+        setJobs(items => items.map(item => item.ingestion_job_id === job.ingestion_job_id ? { ...item, ...state } : item));
+        attempts += 1;
+        if (!['READY', 'PUBLISHED', 'FAILED'].includes(state.status) && attempts < 180) window.setTimeout(poll, 2000);
+      } catch (e: any) { setError(e.message); }
+    };
+    void poll();
+  };
+  const upload = async (file: File) => {
+    try {
+      const form = new FormData(); form.append('file', file);
+      const job = await api<Job>(`/api/v1/knowledge-bases/${kb}/documents`, { method: 'POST', body: form });
+      setJobs(items => [job, ...items.filter(item => item.ingestion_job_id !== job.ingestion_job_id)]);
+      pollJob(job);
+    } catch (e: any) { setError(e.message); }
+  };
+  const deleteKb = async (id: string) => {
+    if (!window.confirm('确定删除当前知识库吗？')) return;
+    try { await api(`/api/v1/knowledge-bases/${id}`, { method: 'DELETE' }); setKb(''); await load(); }
+    catch (e: any) { setError(e.message); }
+  };
+  if (authChecking) return <main className="login"><p>正在恢复登录状态…</p></main>;
+  if (!user) return <Login onLogin={setUser} />;
+  const tabs = [['chat', 'Chat 问答'], ['upload', '文档入库'], ['documents', '文档浏览'], ['search', '检索调试'], ['trace', 'Trace 观测'], ['evaluation', '评估回归']];
+  return <main className="app-shell"><header className="topbar"><div className="logo"><span>AR</span><b>Asphoif RAG</b></div><div className="top-actions"><span>{user.username} · {user.role}</span><button onClick={() => { localStorage.removeItem('token'); setUser(undefined); }}>退出登录</button></div></header><div className="workspace"><KnowledgeSidebar kbs={kbs} selected={kb} onSelect={setKb} onRefresh={load} onDelete={deleteKb} onCreate={async name => { try { await api('/api/v1/knowledge-bases', { method: 'POST', body: JSON.stringify({ name }) }); await load(); } catch (e: any) { setError(e.message); } }} /><section className="content"><div className="content-tabs">{tabs.map(([id, label]) => <button className={tab === id ? 'active' : ''} onClick={() => setTab(id)} key={id}>{label}</button>)}</div><div className="kb-banner">当前知识库：<b>{kbs.find(x => x.id === kb)?.name || '未选择'}</b><span>{kb || '请选择知识库后开始测试'}</span></div>{tab === 'chat' && <ChatPanel kb={kb} onTrace={setTrace} />}{tab === 'upload' && <UploadPanel kb={kb} jobs={jobs} onUpload={upload} />}{tab === 'documents' && <DocumentsPanel kb={kb} />}{tab === 'search' && <SearchPanel kb={kb} onTrace={setTrace} />}{tab === 'trace' && <TracePanel trace={trace} />}{tab === 'evaluation' && <EvaluationPanel />} {error && <div className="alert error global-error">{error}<button onClick={() => setError('')}>×</button></div>}</section></div></main>;
+}
 createRoot(document.getElementById('root')!).render(<App />);
 
 
