@@ -11,7 +11,7 @@ from app.core.security import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_db_session
 from app.models.user import User
-from app.models.knowledge import Document, DocumentVersion
+from app.models.knowledge import Chunk, Document, DocumentVersion
 from app.ingestion.storage import LocalFileStorage
 from app.schemas.knowledge import (
     DocumentResponse,
@@ -132,3 +132,24 @@ async def get_document(
     payload = DocumentResponse.model_validate(document).model_dump(mode="json")
     payload.update(content=content, version=version.version if version else None)
     return api_response(success=True, code=0, message="ok", data=payload)
+
+
+@router.get("/documents/{document_id}/chunks", response_model=dict[str, Any], summary="查询文档分块")
+async def list_document_chunks(
+    document_id: str,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    result = await session.execute(visible_documents(user).where(Document.id == document_id))
+    document = result.scalar_one_or_none()
+    if document is None:
+        from app.core.errors import AppError, ErrorCode
+        raise AppError(code=ErrorCode.RESOURCE_NOT_FOUND, message="文档不存在", error_type="RESOURCE_NOT_FOUND", status_code=404)
+    version = await session.scalar(
+        select(DocumentVersion).where(DocumentVersion.document_id == document.id).order_by(DocumentVersion.version.desc()).limit(1)
+    )
+    chunks = []
+    if version:
+        rows = await session.scalars(select(Chunk).where(Chunk.document_version_id == version.id).order_by(Chunk.ordinal))
+        chunks = [{"id": chunk.id, "ordinal": chunk.ordinal, "content": chunk.content, "start_offset": chunk.start_offset, "end_offset": chunk.end_offset} for chunk in rows]
+    return api_response(success=True, code=0, message="ok", data={"document_id": document.id, "version": version.version if version else None, "items": chunks})
