@@ -19,7 +19,8 @@ export type ReviewResult = {
   answer?: string | null;
   context_snapshot?: { candidates?: { chunk_id?: string; content?: string }[] };
   citations?: { chunk_id?: string; file_name?: string }[];
-  metrics?: { human_review?: Review };
+  metrics?: { human_review?: Review; ragas?: { status?: string; reason?: string; detail?: string; judge_model?: string; scores?: Record<string, number | null>; metric_errors?: Record<string, string> } };
+  error_message?: string | null;
 };
 type ReviewPayload = { scores: Scores; reviewer_note: string | null; rubric_version: string };
 const grades = ['完全不满足', '严重问题', '较多问题', '基本满足，仍需修改', '良好，仅有轻微问题', '完全满足'];
@@ -60,13 +61,14 @@ export function HumanReviewCard({ item, caseData, save }: {
         {item.context_snapshot?.candidates?.length ? item.context_snapshot.candidates.map((chunk, index) => <section key={`${chunk.chunk_id}-${index}`}><h3>证据 {index + 1} · {chunk.chunk_id}</h3><p>{chunk.content || '该 Trace 未保存证据正文'}</p></section>) : <p>无检索证据</p>}
         <h3>答案引用</h3>{item.citations?.length ? <ul>{item.citations.map((citation, index) => <li key={`${citation.chunk_id}-${index}`}>{citation.file_name || '来源'} · {citation.chunk_id || '无 Chunk ID'}</li>)}</ul> : <p>无引用</p>}
       </details>
+      {item.metrics?.ragas && <section className="case-ragas"><h3>RAGAS + Judge LLM</h3><p>状态：{item.metrics.ragas.status || 'unknown'}{item.metrics.ragas.reason ? ` · ${item.metrics.ragas.reason}` : ''}{item.metrics.ragas.judge_model ? ` · ${item.metrics.ragas.judge_model}` : ''}</p>{item.metrics.ragas.detail && <p className="error">错误详情：{item.metrics.ragas.detail}</p>}{item.metrics.ragas.metric_errors && <div className="case-ragas-errors">{Object.entries(item.metrics.ragas.metric_errors).map(([key, value]) => <p key={key}><b>{key}</b>：{value}</p>)}</div>}{item.metrics.ragas.scores && <div className="case-ragas-scores">{Object.entries(item.metrics.ragas.scores).map(([key, value]) => <span key={key}><b>{key}</b> {typeof value === 'number' && Number.isFinite(value) ? value.toFixed(4) : '未返回'}</span>)}</div>}</section>}
     </div>
     <form className="review-form" onSubmit={submit}>
       <strong>人工评分 · 0～5 分</strong>
       <p className="review-rubric">0 完全不满足 · 1 严重问题 · 2 较多问题 · 3 基本满足 · 4 良好 · 5 完全满足。未评分不等于 0 分。</p>
       <p className="review-rubric">无需引用且确实没有待支撑结论时，两项引用评分选 5；存在无依据结论或错误引用时仍需扣分，并在备注说明。不可回答问题应结合拒答是否合理评分。</p>
       {caseData && <p className="review-rubric">本 Case：{caseData.requires_citation ? '要求引用' : '不强制引用'} · {caseData.is_unanswerable ? '不可回答问题' : '可回答问题'}</p>}
-      {!canReview && <p className="alert">该结果缺少 Trace 或生成答案，暂不能进行答案评分。</p>}
+      {!canReview && <p className="alert">{item.error_message === 'TRACE_NOT_BOUND' ? '该 Case 尚未绑定线上 Trace。请先用相同问题完成一次 Chat，再重新创建评估 Run。' : '该结果缺少 Trace 或生成答案，暂不能进行答案评分。'}</p>}
       <fieldset disabled={busy || !canReview} className="review-score-grid">
         {fields.map(([key, label, help]) => <label key={key}>
           <span>{label}</span><small>{help}</small>

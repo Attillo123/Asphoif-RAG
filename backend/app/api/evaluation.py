@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError, ErrorCode, api_response
 from app.core.config import Settings, get_settings
+from app.cache.redis import normalize_query
 from app.core.security import get_current_user
 from app.db.ids import new_id
 from app.db.session import get_db_session
@@ -78,6 +79,10 @@ async def publish_snapshot(snapshot_id: str, session: AsyncSession = Depends(get
     if snapshot is None: raise AppError(ErrorCode.RESOURCE_NOT_FOUND, "评估数据集不存在", "RESOURCE_NOT_FOUND", 404)
     snapshot.status = "published"
     await session.commit()
+    # Async sessions expire ORM attributes on commit by default. Refresh the
+    # row before building the response to avoid an implicit lazy load outside
+    # greenlet_spawn (MissingGreenlet).
+    await session.refresh(snapshot)
     return api_response(success=True, code=0, message="ok", data=_snapshot_payload(snapshot))
 
 
@@ -87,11 +92,32 @@ async def create_run(payload: RunCreate, session: AsyncSession = Depends(get_db_
     if snapshot is None: raise AppError(ErrorCode.RESOURCE_NOT_FOUND, "评估数据集不存在", "RESOURCE_NOT_FOUND", 404)
     if snapshot.status != "published": raise AppError(ErrorCode.INVALID_REQUEST, "数据集快照必须先发布", "SNAPSHOT_NOT_PUBLISHED", 409)
     cases = (await session.scalars(select(EvaluationDatasetCase).where(EvaluationDatasetCase.snapshot_id == snapshot.id))).all()
+    # The console can bind a Case to the most recent online Trace for the same
+    # question. Explicit bindings always win; the resolved map is persisted in
+    # run_manifest so the run remains reproducible after creation.
+    trace_bindings = dict(payload.trace_bindings)
+    for case in cases:
+        if case.id in trace_bindings:
+            continue
+        canonical_hash = hashlib.sha256(normalize_query(case.question).encode("utf-8")).hexdigest()
+        legacy_hash = hashlib.sha256(case.question.strip().encode("utf-8")).hexdigest()
+        trace_statement = (
+            select(QueryTrace)
+            .where(QueryTrace.query_hash.in_((canonical_hash, legacy_hash)), QueryTrace.status.in_(("completed", "degraded")))
+            .order_by(desc(QueryTrace.created_at))
+        )
+        if user.role != "admin":
+            trace_statement = trace_statement.where(QueryTrace.user_id == user.id)
+        if snapshot.knowledge_base_id:
+            trace_statement = trace_statement.where(QueryTrace.knowledge_base_id == snapshot.knowledge_base_id)
+        trace = await session.scalar(trace_statement)
+        if trace is not None:
+            trace_bindings[case.id] = trace.request_id
     case_ids = {case.id for case in cases}
-    invalid_case_ids = set(payload.trace_bindings) - case_ids
+    invalid_case_ids = set(trace_bindings) - case_ids
     if invalid_case_ids:
         raise AppError(ErrorCode.INVALID_REQUEST, "Trace 绑定包含不属于数据集的 Case", "INVALID_TRACE_BINDING", 422)
-    for case_id, request_id in payload.trace_bindings.items():
+    for case_id, request_id in trace_bindings.items():
         trace_statement = select(QueryTrace).where(QueryTrace.request_id == request_id)
         if user.role != "admin":
             trace_statement = trace_statement.where(QueryTrace.user_id == user.id)
@@ -102,7 +128,7 @@ async def create_run(payload: RunCreate, session: AsyncSession = Depends(get_db_
             raise AppError(ErrorCode.INVALID_REQUEST, "Trace 与数据集知识库不一致", "TRACE_KNOWLEDGE_BASE_MISMATCH", 422)
     defaults = {"judge_base_url": settings.evaluation_judge_base_url, "judge_model": settings.evaluation_judge_model, "judge_prompt_version": settings.evaluation_judge_prompt_version, "judge_api_key_configured": bool(settings.evaluation_judge_api_key), "evaluator": "ragas"}
     supplied_manifest = {key: value for key, value in payload.manifest.items() if key != "judge_api_key"}
-    manifest = {**{k: v for k, v in defaults.items() if v is not None}, **supplied_manifest, "trace_bindings": payload.trace_bindings, "cache_policy": "disabled", "snapshot_id": snapshot.id}
+    manifest = {**{k: v for k, v in defaults.items() if v is not None}, **supplied_manifest, "trace_bindings": trace_bindings, "cache_policy": "disabled", "snapshot_id": snapshot.id}
     run = EvaluationRun(snapshot_id=snapshot.id, run_manifest=manifest, created_by=user.id, status="pending")
     session.add(run)
     await session.commit()

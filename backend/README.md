@@ -87,6 +87,8 @@ uv run alembic upgrade head
 
 ```text
 POST /api/v1/knowledge-bases/{knowledge_base_id}/documents
+GET  /api/v1/knowledge-bases/{knowledge_base_id}/ingestion-jobs
+POST /api/v1/knowledge-bases/{knowledge_base_id}/ingestion-jobs/process
 GET  /api/v1/ingestion-jobs/{job_id}
 ```
 
@@ -157,3 +159,4 @@ uv run alembic upgrade head
 uv run ruff check app
 uv run pytest
 ```
+

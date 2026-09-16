@@ -16,6 +16,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.retrieval import search as retrieval_search
+from app.cache.redis import normalize_query
 from app.core.config import Settings, get_settings
 from app.core.errors import ErrorCode
 from app.core.request_id import get_request_id
@@ -116,7 +117,9 @@ async def completions(
     trace_id = get_request_id() or f"req_{uuid.uuid4().hex}"
     conversation_id = payload.conversation_id or uuid.uuid4().hex
     started = time.monotonic()
-    query_hash = hashlib.sha256(payload.query.strip().encode("utf-8")).hexdigest()
+    # Use the same canonical hash as retrieval so evaluation can bind this
+    # completed online Trace back to the Case question.
+    query_hash = hashlib.sha256(normalize_query(payload.query).encode("utf-8")).hexdigest()
 
     async def update_trace(**values: Any) -> None:
         try:

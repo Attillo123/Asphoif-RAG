@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,14 +10,47 @@ from app.core.config import Settings, get_settings
 from app.core.errors import AppError, ErrorCode, api_response
 from app.core.security import get_current_user
 from app.db.session import get_db_session
+from app.ingestion.embeddings import QwenEmbeddingClient
+from app.ingestion.indexers import OpenSearchChunkIndexer
 from app.ingestion.storage import LocalFileStorage
 from app.models.knowledge import Document, DocumentVersion, IngestionJob
 from app.models.user import User
 from app.schemas.ingestion import DocumentUploadResponse, IngestionJobResponse
-from app.services.ingestion import create_ingestion_job
+from app.services.ingestion import (
+    claim_next_ingestion_job_for_knowledge_base,
+    create_ingestion_job,
+    process_ingestion_job,
+)
 from app.services.knowledge import get_visible_knowledge_base
 
 router = APIRouter(prefix="/api/v1", tags=["ingestion"])
+
+
+def _ingestion_clients(settings: Settings):
+    embedding_client = QwenEmbeddingClient(
+        base_url=settings.qwen_embedding_base_url,
+        api_key=settings.qwen_embedding_api_key.get_secret_value(),
+        model=settings.qwen_embedding_model,
+        dimension=settings.qwen_embedding_dimension,
+        timeout_seconds=settings.healthcheck_timeout_seconds,
+    )
+    indexer = OpenSearchChunkIndexer(
+        base_url=settings.opensearch_url,
+        write_alias=settings.opensearch_write_alias,
+        index_version=settings.opensearch_index,
+        embedding_model=settings.qwen_embedding_model,
+        username=settings.opensearch_username,
+        password=settings.opensearch_password.get_secret_value() if settings.opensearch_password else None,
+        verify_ssl=settings.opensearch_verify_ssl,
+        timeout_seconds=settings.healthcheck_timeout_seconds,
+    )
+    return LocalFileStorage(settings.local_file_root), embedding_client, indexer
+
+
+async def _process_claimed_job(job_id: str, settings: Settings) -> None:
+    storage, embedding_client, indexer = _ingestion_clients(settings)
+    async for session in get_db_session():
+        await process_ingestion_job(session, job_id, settings, storage, embedding_client, indexer)
 
 
 @router.post(
@@ -130,6 +163,22 @@ async def list_ingestion_jobs(
             "updated_at": job.updated_at,
         })
     return api_response(success=True, code=0, message="ok", data={"items": items})
+
+
+@router.post("/knowledge-bases/{knowledge_base_id}/ingestion-jobs/process", response_model=dict[str, Any], summary="处理一个入库任务")
+async def process_knowledge_base_job(
+    knowledge_base_id: str,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_db_session),
+    user: User = Depends(get_current_user),
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    await get_visible_knowledge_base(session, user, knowledge_base_id)
+    job = await claim_next_ingestion_job_for_knowledge_base(session, settings, knowledge_base_id)
+    if job is None:
+        return api_response(success=True, code=0, message="没有待处理的入库任务", data={"job": None})
+    background_tasks.add_task(_process_claimed_job, job.id, settings)
+    return api_response(success=True, code=0, message="已开始处理入库任务", data={"job": {"ingestion_job_id": job.id, "status": job.status, "stage": job.stage}})
 
 
 async def get_visible_knowledge_base_for_job(

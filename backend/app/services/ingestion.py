@@ -330,6 +330,37 @@ async def claim_next_ingestion_job(
     return job
 
 
+async def claim_next_ingestion_job_for_knowledge_base(
+    session: AsyncSession, settings: Settings, knowledge_base_id: str
+) -> IngestionJob | None:
+    """Claim one eligible job for the selected knowledge base.
+
+    This is used by the development console to start one worker iteration while
+    preserving the same row-locking and lease semantics as the standalone worker.
+    """
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    statement = (
+        select(IngestionJob)
+        .join(DocumentVersion, DocumentVersion.id == IngestionJob.document_version_id)
+        .join(Document, Document.id == DocumentVersion.document_id)
+        .where(
+            Document.knowledge_base_id == knowledge_base_id,
+            Document.status != "deleted",
+            IngestionJob.status.in_(("PENDING", "RETRY_WAITING")),
+            or_(IngestionJob.next_retry_at.is_(None), IngestionJob.next_retry_at <= now),
+        )
+        .order_by(IngestionJob.created_at)
+        .with_for_update(skip_locked=True)
+    )
+    job = await session.scalar(statement)
+    if job is None:
+        return None
+    job.worker_id = settings.ingestion_worker_id
+    job.lease_expires_at = now + timedelta(seconds=300)
+    await session.commit()
+    return job
+
+
 async def reset_ingestion_job_for_retry(
     session: AsyncSession, job_id: str
 ) -> IngestionJob:

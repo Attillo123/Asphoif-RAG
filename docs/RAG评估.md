@@ -166,3 +166,13 @@ RAGAS、DeepEval 和 ARES 均通过 `Evaluator` 适配器接入。运行清单�
 - 默认未评分，不能将空值转成 0；提交时六项必须齐全，备注选填且不超过 2000 字。
 - 结果保存在 `metrics.human_review`，记录评审人、时间、量表版本；自动评分保持独立。再次保存替换上次人工评分，目前不是多评审人历史记录。
 - 新量表由服务端校验字段及范围，旧 `v1` 记录保持可读取；旧单项评分回显后需补齐其余项目才能提交新量表。
+
+
+### 控制台 Trace 绑定
+
+评估 Run 只消费线上 Trace，不会在执行评估时重新调用 Chat。控制台创建快照时记录当前知识库和问题；创建 Run 时，服务端会在当前用户可见范围内按问题哈希、知识库和 `completed/degraded` 状态自动绑定最近 Trace，并将最终绑定写入 `run_manifest.trace_bindings`。如果没有匹配 Trace，Case 结果会标记 `TRACE_NOT_BOUND`，人工评分表单保持禁用。推荐先在 Chat 问答中用相同问题完成一次回答，再创建并执行 Run。
+
+
+### 控制台 Trace 绑定
+
+评估 Run 只消费线上 Trace，不会在执行评估时重新调用 Chat。控制台创建快照时记录当前知识库和问题；创建 Run 时，服务端会在当前用户可见范围内按问题哈希、知识库和 `completed/degraded` 状态自动绑定最近 Trace，并将最终绑定写入 `run_manifest.trace_bindings`。如果没有匹配 Trace，Case 结果会标记 `TRACE_NOT_BOUND`，人工评分表单保持禁用。推荐先在 Chat 问答中用相同问题完成一次回答，再创建并执行 Run。

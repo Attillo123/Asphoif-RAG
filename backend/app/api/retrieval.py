@@ -357,6 +357,12 @@ async def search(
                     "rank": hit.rank,
                     "score": hit.score,
                     "channels": hit.channels,
+                    # Persist the exact text used to build the Chat prompt so
+                    # evaluation (RAGAS) can score faithfulness and context
+                    # precision/recall from the online Trace alone.
+                    "content": hit.source.get("content", ""),
+                    "document_id": hit.source.get("document_id"),
+                    "file_name": hit.source.get("file_name"),
                 }
                 for hit in outcome.fused
             ],
