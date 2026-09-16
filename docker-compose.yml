@@ -1,0 +1,65 @@
+services:
+  migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: asphoif-rag/backend:local
+    env_file:
+      - .env
+    command: >-
+      sh -c "alembic upgrade head && python -m app.cli init-opensearch"
+    restart: "no"
+    volumes:
+      - file-data:/app/backend/data/files
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: asphoif-rag/backend:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "8000"
+    volumes:
+      - file-data:/app/backend/data/files
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    image: asphoif-rag/backend:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      api:
+        condition: service_healthy
+    command: ["/bin/sh", "/app/docker/worker.sh"]
+    volumes:
+      - file-data:/app/backend/data/files
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+    image: asphoif-rag/frontend:local
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+volumes:
+  file-data:

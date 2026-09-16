@@ -4,7 +4,10 @@ import './style.css';
 import { HumanReviewCard } from './HumanReviewCard';
 import type { ReviewCase, ReviewResult } from './HumanReviewCard';
 
-const API = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000';
+// Leave the base URL empty in production so the Nginx reverse proxy can keep
+// the UI and API on the same origin. A full URL can still be supplied for
+// local Vite development through VITE_API_BASE_URL.
+const API = import.meta.env.VITE_API_BASE_URL || '';
 
 type User = { id: string; username: string; role: string };
 type KnowledgeBase = { id: string; name: string; description?: string; status?: string; current_version?: string };
