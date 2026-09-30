@@ -143,6 +143,7 @@ async def completions(
                     knowledge_base_version=payload.knowledge_base_version,
                     dense_k=payload.dense_k,
                     sparse_k=payload.sparse_k,
+                    cache_policy=payload.cache_policy,
                 ),
                 session=session,
                 user=user,

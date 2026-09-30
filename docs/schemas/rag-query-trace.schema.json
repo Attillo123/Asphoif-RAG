@@ -96,6 +96,7 @@
         "rerank_model": { "type": ["string", "null"] },
         "prompt_version": { "type": "string", "minLength": 1 },
         "chat_model": { "type": "string", "minLength": 1 },
+        "cache_policy": { "type": "string", "enum": ["enabled", "disabled"] },
         "model_parameters": { "type": "object" }
       }
     },

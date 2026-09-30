@@ -6,7 +6,7 @@ def test_retrieval_metrics_uses_ranked_chunk_ids() -> None:
 
     assert metrics["hit@3"] == 1
     assert metrics["recall@3"] == 1.0
-    assert metrics["precision@3"] == 2 / 3
+    assert metrics["precision@3"] == pytest.approx(2 / 3)
     assert metrics["mrr@3"] == 0.5
     assert metrics["ndcg@3"] > 0
 

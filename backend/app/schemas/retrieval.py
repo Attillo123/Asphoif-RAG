@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,6 +11,7 @@ class RetrievalRequest(BaseModel):
     knowledge_base_version: str | None = Field(default=None, max_length=64)
     dense_k: int | None = Field(default=None, ge=1, le=100)
     sparse_k: int | None = Field(default=None, ge=1, le=100)
+    cache_policy: Literal["enabled", "disabled"] = "enabled"
 
 
 class RetrievalHitResponse(BaseModel):
@@ -27,3 +28,4 @@ class ChatRequest(BaseModel):
     dense_k: int | None = Field(default=None, ge=1, le=100)
     sparse_k: int | None = Field(default=None, ge=1, le=100)
     conversation_id: str | None = Field(default=None, max_length=64)
+    cache_policy: Literal["enabled", "disabled"] = "enabled"

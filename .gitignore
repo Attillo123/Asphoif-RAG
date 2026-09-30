@@ -9,3 +9,7 @@ backend/**/__pycache__/
 
 data/files/
 *.py[cod]
+
+# Local project notes and generated documentation
+/docs/**/*.md
+/docs/*.md

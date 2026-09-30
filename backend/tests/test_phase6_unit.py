@@ -1,6 +1,7 @@
 import json
 
 from app.api.chat import _context, _redact, _sse
+from app.api.retrieval import _trace_snapshot
 
 
 def test_trace_redaction_masks_phone_and_id_and_marks_truncation() -> None:
@@ -46,5 +47,38 @@ def test_context_builds_citations_and_applies_character_limit() -> None:
             "document_id": "doc-1",
             "file_name": "测试.txt",
             "rank": 1,
+        }
+    ]
+
+
+def test_trace_snapshot_normalizes_cached_retrieval_payload() -> None:
+    payload = {
+        "dense": [],
+        "sparse": [],
+        "fused": [
+            {
+                "chunk_id": "chunk-1",
+                "rank": 1,
+                "score": 0.5,
+                "channels": ["dense", "sparse"],
+                "source": {
+                    "content": "证据正文",
+                    "document_id": "doc-1",
+                    "metadata": {"file_name": "制度.md"},
+                },
+            }
+        ],
+    }
+    snapshot = _trace_snapshot(payload, query="问题", rewritten_query="问题")
+    assert snapshot["query"] == "问题"
+    assert snapshot["candidates"] == [
+        {
+            "chunk_id": "chunk-1",
+            "rank": 1,
+            "score": 0.5,
+            "channels": ["dense", "sparse"],
+            "content": "证据正文",
+            "document_id": "doc-1",
+            "file_name": "制度.md",
         }
     ]

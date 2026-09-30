@@ -81,6 +81,43 @@ def _outcome_payload(outcome: RetrievalOutcome) -> dict[str, Any]:
     }
 
 
+def _trace_snapshot(
+    payload: dict[str, Any], *, query: str, rewritten_query: str
+) -> dict[str, Any]:
+    """Build the canonical retrieval snapshot used by Trace and evaluation.
+
+    Redis stores the API payload, while evaluators consume ``candidates``.
+    Keeping this conversion in one place makes fresh and cached retrievals
+    produce the same Trace shape.
+    """
+    candidates: list[dict[str, Any]] = []
+    for item in payload.get("fused", []) or []:
+        source = item.get("source") or {}
+        metadata = source.get("metadata") if isinstance(source, dict) else {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        candidates.append(
+            {
+                "chunk_id": item.get("chunk_id"),
+                "rank": item.get("rank"),
+                "score": item.get("score", 0.0),
+                "channels": item.get("channels") or [],
+                "content": source.get("content", "") if isinstance(source, dict) else "",
+                "document_id": source.get("document_id") if isinstance(source, dict) else None,
+                "file_name": (
+                    source.get("file_name")
+                    if isinstance(source, dict) and source.get("file_name")
+                    else metadata.get("file_name")
+                ),
+            }
+        )
+    return {
+        "query": query,
+        "rewritten_query": rewritten_query,
+        "candidates": candidates,
+    }
+
+
 def _stage(
     name: str,
     status: str,
@@ -185,6 +222,7 @@ def _manifest(
     dense_k: int,
     sparse_k: int,
     final_top_k: int,
+    cache_policy: str = "enabled",
 ) -> dict[str, Any]:
     return {
         "parser_version": "unknown",
@@ -200,6 +238,7 @@ def _manifest(
         "rerank_model": settings.rerank_model,
         "prompt_version": "not-applicable",
         "chat_model": settings.chat_model,
+        "cache_policy": cache_policy,
     }
 
 
@@ -225,7 +264,13 @@ async def search(
         knowledge_base_version=kb_version,
     )
     query_hash = hashlib.sha256(normalized_query.encode("utf-8")).hexdigest()
-    manifest = _manifest(settings, dense_k=dense_k, sparse_k=sparse_k, final_top_k=final_top_k)
+    manifest = _manifest(
+        settings,
+        dense_k=dense_k,
+        sparse_k=sparse_k,
+        final_top_k=final_top_k,
+        cache_policy=payload.cache_policy,
+    )
     cache = RedisCache(settings.redis_url, environment=settings.app_env)
     cache_parameters = {
         "owner_id": knowledge_base.owner_id,
@@ -242,6 +287,7 @@ async def search(
         "sparse_k": sparse_k,
         "final_top_k": final_top_k,
     }
+    cache_enabled = payload.cache_policy == "enabled"
     cache_key = cache.key(
         "retrieve",
         "v2",  # Excludes vectors; do not reuse v1 payloads containing content_vector.
@@ -250,11 +296,13 @@ async def search(
     )
     reasons: list[str] = []
     try:
-        try:
-            cached = await cache.get_json(cache_key)
-        except CacheUnavailable:
-            cached = None
-            reasons.append("CACHE_UNAVAILABLE")
+        cached = None
+        if cache_enabled:
+            try:
+                cached = await cache.get_json(cache_key)
+            except CacheUnavailable:
+                cached = None
+                reasons.append("CACHE_UNAVAILABLE")
         if cached is not None:
             await _write_trace(
                 session,
@@ -270,7 +318,9 @@ async def search(
                 reasons=reasons,
                 stages=[],
                 timeout_summary=_timeout_summary(deadline),
-                retrieval_snapshot=cached,
+                retrieval_snapshot=_trace_snapshot(
+                    cached, query=payload.query, rewritten_query=normalized_query
+                ),
             )
             return api_response(
                 success=True,
@@ -291,27 +341,46 @@ async def search(
         # for the owner to populate the key, then continues without Redis if
         # the owner did not finish in time.
         lock_token = None
-        try:
-            lock_token = await cache.acquire_lock(cache_key)
-            if lock_token is None:
-                cached = await cache.wait_for_json(cache_key)
-                if cached is not None:
-                    return api_response(
-                        success=True,
-                        code=0,
-                        message="ok",
-                        data={
-                            **cached,
-                            "status": "completed",
-                            "degraded_reasons": [],
-                            "cache_hit": True,
-                            "dense_k": dense_k,
-                            "sparse_k": sparse_k,
-                            "final_top_k": final_top_k,
-                        },
-                    )
-        except CacheUnavailable:
-            reasons.append("CACHE_UNAVAILABLE")
+        if cache_enabled:
+            try:
+                lock_token = await cache.acquire_lock(cache_key)
+                if lock_token is None:
+                    cached = await cache.wait_for_json(cache_key)
+                    if cached is not None:
+                        await _write_trace(
+                            session,
+                            user=user,
+                            knowledge_base_id=knowledge_base.id,
+                            knowledge_base_version=kb_version,
+                            query_hash=query_hash,
+                            started=started,
+                            deadline=deadline,
+                            manifest=manifest,
+                            status="degraded" if reasons else "completed",
+                            cache_hit=True,
+                            reasons=reasons,
+                            stages=[],
+                            timeout_summary=_timeout_summary(deadline),
+                            retrieval_snapshot=_trace_snapshot(
+                                cached, query=payload.query, rewritten_query=normalized_query
+                            ),
+                        )
+                        return api_response(
+                            success=True,
+                            code=0,
+                            message="ok",
+                            data={
+                                **cached,
+                                "status": "completed",
+                                "degraded_reasons": [],
+                                "cache_hit": True,
+                                "dense_k": dense_k,
+                                "sparse_k": sparse_k,
+                                "final_top_k": final_top_k,
+                            },
+                        )
+            except CacheUnavailable:
+                reasons.append("CACHE_UNAVAILABLE")
 
         registry = await get_circuit_registry(
             failure_threshold=settings.circuit_failure_threshold,
@@ -326,6 +395,7 @@ async def search(
             settings,
             deadline,
             reasons,
+            use_cache=cache_enabled,
         )
         outcome = await retrieve_resilient(
             _retriever(settings, SparseRetriever),
@@ -343,30 +413,15 @@ async def search(
         reasons = list(dict.fromkeys(reasons))
         outcome.degraded_reasons = reasons
         cached_payload = _outcome_payload(outcome)
-        try:
-            await cache.set_json(cache_key, cached_payload, settings.retrieval_cache_ttl_seconds)
-        except CacheUnavailable:
-            reasons = list(dict.fromkeys([*reasons, "CACHE_UNAVAILABLE"]))
-            outcome.degraded_reasons = reasons
-        snapshot = {
-            "query": payload.query,
-            "rewritten_query": normalized_query,
-            "candidates": [
-                {
-                    "chunk_id": hit.chunk_id,
-                    "rank": hit.rank,
-                    "score": hit.score,
-                    "channels": hit.channels,
-                    # Persist the exact text used to build the Chat prompt so
-                    # evaluation (RAGAS) can score faithfulness and context
-                    # precision/recall from the online Trace alone.
-                    "content": hit.source.get("content", ""),
-                    "document_id": hit.source.get("document_id"),
-                    "file_name": hit.source.get("file_name"),
-                }
-                for hit in outcome.fused
-            ],
-        }
+        if cache_enabled:
+            try:
+                await cache.set_json(cache_key, cached_payload, settings.retrieval_cache_ttl_seconds)
+            except CacheUnavailable:
+                reasons = list(dict.fromkeys([*reasons, "CACHE_UNAVAILABLE"]))
+                outcome.degraded_reasons = reasons
+        snapshot = _trace_snapshot(
+            cached_payload, query=payload.query, rewritten_query=normalized_query
+        )
         await _write_trace(
             session,
             user=user,
@@ -462,6 +517,8 @@ async def _get_embedding(
     settings: Settings,
     deadline: Deadline,
     reasons: list[str],
+    *,
+    use_cache: bool = True,
 ) -> tuple[list[float] | None, dict[str, Any]]:
     started = time.monotonic()
     started_at = _now_iso()
@@ -476,11 +533,13 @@ async def _get_embedding(
             "query": query,
         }
         key = cache.key("emb", "v1", "global", parameters)
-        try:
-            cached = await cache.get_json(key)
-        except CacheUnavailable:
-            cached = None
-            reasons.append("CACHE_UNAVAILABLE")
+        cached = None
+        if use_cache:
+            try:
+                cached = await cache.get_json(key)
+            except CacheUnavailable:
+                cached = None
+                reasons.append("CACHE_UNAVAILABLE")
         if cached is not None:
             vector = cached["vector"]
             cache_hit = True
@@ -497,18 +556,19 @@ async def _get_embedding(
                     client.embed([query]), timeout=deadline.remaining_seconds
                 )
             )[0]
-            try:
-                await cache.set_json(
-                    key,
-                    {
-                        "model": settings.qwen_embedding_model,
-                        "dimension": settings.qwen_embedding_dimension,
-                        "vector": vector,
-                    },
-                    settings.embedding_cache_ttl_seconds,
-                )
-            except CacheUnavailable:
-                reasons.append("CACHE_UNAVAILABLE")
+            if use_cache:
+                try:
+                    await cache.set_json(
+                        key,
+                        {
+                            "model": settings.qwen_embedding_model,
+                            "dimension": settings.qwen_embedding_dimension,
+                            "vector": vector,
+                        },
+                        settings.embedding_cache_ttl_seconds,
+                    )
+                except CacheUnavailable:
+                    reasons.append("CACHE_UNAVAILABLE")
         await breaker.record_success()
     except CircuitOpenError:
         reasons.append("EMBEDDING_UNAVAILABLE")

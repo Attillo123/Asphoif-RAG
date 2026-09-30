@@ -1,0 +1,801 @@
+{
+  "dataset_id": "nx700-rag-eval-baseline",
+  "snapshot_version": "1.0",
+  "name": "NX-700 RAG 评估基线 45 Cases",
+  "source_type": "manual",
+  "knowledge_base_version": "1",
+  "description": "三篇互相关联的 NX-700 企业资料，覆盖事实、条件、对比、多跳、总结、不可回答和引用要求。gold_chunk_ids 待文档入库后回填。",
+  "documents": [
+    {
+      "file_name": "NX-700评估基线-产品与部署.md",
+      "path": "docs/test-docs/NX-700评估基线-产品与部署.md"
+    },
+    {
+      "file_name": "NX-700评估基线-运维与故障处理.md",
+      "path": "docs/test-docs/NX-700评估基线-运维与故障处理.md"
+    },
+    {
+      "file_name": "NX-700评估基线-仓库安全与应急.md",
+      "path": "docs/test-docs/NX-700评估基线-仓库安全与应急.md"
+    }
+  ],
+  "case_count": 45,
+  "cases": [
+    {
+      "question": "NX-700 Pro 的额定载荷是多少？",
+      "reference_answer": "Pro 的额定载荷是 1000 kg。",
+      "gold_chunk_ids": ["2WY15M80YC331RFXBK44EYSGQ0"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Lite 型号的最低安全通道宽度是多少？",
+      "reference_answer": "Lite 的最低安全通道宽度是 1.5 m。",
+      "gold_chunk_ids": ["6F0MCY7FKHPCSFEAJ7DA6QZ5F2"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "哪一种型号必须使用 CS-200 充电桩？",
+      "reference_answer": "Pro 型号必须使用 CS-200 充电桩。",
+      "gold_chunk_ids": ["34Q5N9KQRPZN2XAAPCR3NFQWYA"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Standard 的标称单次充电续航是多少？",
+      "reference_answer": "在额定载荷、20～25°C 且地面平整的条件下，Standard 的标称续航是 9 小时。",
+      "gold_chunk_ids": ["5JCZG63AZVMMS3G210VCXGVCQG"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "NX-700 使用哪些传感器进行感知与定位？",
+      "reference_answer": "使用激光雷达、超声波传感器和二维码地标。",
+      "gold_chunk_ids": ["2A0MVMV9HH2ASJ05E69VC3DA57"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "传感器与定位"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "SOH 低于多少需要安排更换电池？",
+      "reference_answer": "SOH 低于 75% 时，需要在 3 个工作日内安排更换。",
+      "gold_chunk_ids": ["1DH29QM2092QS5Z2SA22MHQJWE"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "激光雷达窗口应该用什么清洁？",
+      "reference_answer": "用无尘布和异丙醇擦拭，不能使用浓度超过 75% 的酒精。",
+      "gold_chunk_ids": ["1DH29QM2092QS5Z2SA22MHQJWE"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "驱动轮花纹深度低于多少必须更换？",
+      "reference_answer": "低于 1.5 mm 时必须更换。",
+      "gold_chunk_ids": ["42V8YSJ2QQK7CG1HRDX0KGJA8D"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "E-205 故障代码代表什么？",
+      "reference_answer": "E-205 表示激光雷达通信中断。",
+      "gold_chunk_ids": ["6ECD58VYW82634G7YJ4NYTVS5N"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "故障代码处理"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "E-509 的处理重点是什么？",
+      "reference_answer": "确认充电桩型号匹配；Pro 必须使用 CS-200。",
+      "gold_chunk_ids": ["6ECD58VYW82634G7YJ4NYTVS5N"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "故障代码处理"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "V2.8.1 升级到 V2.8.2 应该使用什么升级方式？",
+      "reference_answer": "应使用 OTA 补丁升级，机器人需处于待机状态，预计约 8 分钟。",
+      "gold_chunk_ids": ["3S9F6P017TCKZRH9Z26XRAJ46H"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "软件升级"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "电池冒烟时第一步应做什么？",
+      "reference_answer": "立即疏散 10 m 范围内人员并设置警戒区。",
+      "gold_chunk_ids": ["7Z3HK1NRSD7FRSH99K7VY3ZVHW"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "电池冒烟应急"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "NX-700 工作时会产生哪些主要电磁频段？",
+      "reference_answer": "主要是 2.4 GHz 和 5.8 GHz。",
+      "gold_chunk_ids": ["58EH6DT8V8Y35SFCCM6AYHCVQK"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "电磁兼容"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "欧盟地区云同步默认是什么状态？",
+      "reference_answer": "默认关闭。若要开启，必须完成 GDPR 合规评审并获得批准。",
+      "gold_chunk_ids": ["2ZKDJ2J0GB3B54TGGKRGF1RFYE"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "数据安全与云同步"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "事故记录通常应在多长时间内提交？",
+      "reference_answer": "一般事故记录应在 24 小时内提交；人员伤害或电池冒烟事件必须立即电话上报。",
+      "gold_chunk_ids": ["06W5DGJBX8MD100QXNRWZY2SAD"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "事故上报"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果 Pro 机器人载荷超过 800 kg 并出现 E-402，应如何处理？",
+      "reference_answer": "应检查是否超载并停止继续运行；Pro 超过 800 kg 容易触发 E-402，确认载荷后再复测。",
+      "gold_chunk_ids": ["6ECD58VYW82634G7YJ4NYTVS5N"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "故障代码处理"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果人员进入机器人 0.3 m 范围内，系统和人员分别应做什么？",
+      "reference_answer": "防撞条应触发机器人立即停机；工作人员确认周围安全后按车体复位按钮，不能只用软件指令重启。",
+      "gold_chunk_ids": ["2CQ68HAR8CVHHY1F3GEPQ8GTFY"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "人机协作距离"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果仓库有精密电子仪器，机器人速度应如何设置？",
+      "reference_answer": "建议限制在 1.0 m/s 以下，并由现场负责人确认不影响精密设备。",
+      "gold_chunk_ids": ["58EH6DT8V8Y35SFCCM6AYHCVQK"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "电磁兼容"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果 SOH 低于 75%，更换电池的时限是什么？",
+      "reference_answer": "应在 3 个工作日内安排更换。",
+      "gold_chunk_ids": ["1DH29QM2092QS5Z2SA22MHQJWE"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果发现电池冒烟，能否用 ABC 干粉灭火器？",
+      "reference_answer": "不能。应疏散人员、通知消防部门并使用 D 类灭火器，禁止用 ABC 干粉灭火器或水直接扑救。",
+      "gold_chunk_ids": ["7Z3HK1NRSD7FRSH99K7VY3ZVHW"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "电池冒烟应急"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果要把 V2.8 升级到 V3.0，升级过程中有哪些条件？",
+      "reference_answer": "这是大版本升级，应使用维护电脑通过 USB-C 连接，预计约 25 分钟，机器人必须保持充电；升级前还应备份地图并确认回滚包。",
+      "gold_chunk_ids": ["3S9F6P017TCKZRH9Z26XRAJ46H","0K1P06ADW9CH5GFTHHVAV17MXM"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "软件升级"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Standard 和 Lite 的驱动轮能否互换？Pro 呢？",
+      "reference_answer": "Standard 与 Lite 驱动轮通用；Pro 驱动轮不可与二者互换。",
+      "gold_chunk_ids": ["42V8YSJ2QQK7CG1HRDX0KGJA8D","2WY15M80YC331RFXBK44EYSGQ0"],
+      "question_type": "comparison",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Standard、Lite、Pro 的额定载荷分别是多少？",
+      "reference_answer": "分别是 600 kg、350 kg 和 1000 kg。",
+      "gold_chunk_ids": ["2WY15M80YC331RFXBK44EYSGQ0"],
+      "question_type": "comparison",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "三种型号的正常运行速度上限分别是多少？",
+      "reference_answer": "Standard 为 1.5 m/s，Lite 为 1.2 m/s，Pro 为 1.0 m/s。",
+      "gold_chunk_ids": ["5JCZG63AZVMMS3G210VCXGVCQG"],
+      "question_type": "comparison",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "OTA 补丁升级和大版本手动升级有什么区别？",
+      "reference_answer": "补丁版本使用 OTA、待机执行、约 8 分钟；大版本使用 USB-C 维护电脑、保持充电、约 25 分钟。",
+      "gold_chunk_ids": ["3S9F6P017TCKZRH9Z26XRAJ46H"],
+      "question_type": "comparison",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "软件升级"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Standard 和 Pro 的激光雷达有什么区别？",
+      "reference_answer": "Standard 使用单线激光雷达，Pro 使用双线激光雷达，Pro 备件不能安装到 Standard。",
+      "gold_chunk_ids": ["2MNY2ZR3526KV605Q6A90DDSTB","5EVGAJRG96GEE2S09P19HTBSWY"],
+      "question_type": "comparison",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "传感器与定位"
+          ],
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "预防性维护与备件"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "为什么 Pro 项目要提前锁定激光雷达备件？",
+      "reference_answer": "因为 Pro 使用双线专用激光雷达，价格约为 Standard 的 2.3 倍，采购周期约 45 天，且不能与其他型号互换。",
+      "gold_chunk_ids": ["2MNY2ZR3526KV605Q6A90DDSTB","5EVGAJRG96GEE2S09P19HTBSWY"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "传感器与定位"
+          ],
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "预防性维护与备件"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "若仓库最窄通道是 1.6 m，哪些型号不能部署？",
+      "reference_answer": "Standard 和 Pro 不能部署，因为最低安全通道宽度要求为 1.8 m；Lite 的要求为 1.5 m，因此从通道宽度看可部署，但仍需完成其他验收。",
+      "gold_chunk_ids": ["6F0MCY7FKHPCSFEAJ7DA6QZ5F2","7ZNGNZPRBV3NDKSA1AJAKVK0F1"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "部署验收条件"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "V2.8 升级 V3.0 后，Standard 和 Pro 的避障逻辑有何不同？",
+      "reference_answer": "Standard 的超声波优先级会提升到与激光雷达同级；Pro 仍保持激光雷达优先。",
+      "gold_chunk_ids": ["0K1P06ADW9CH5GFTHHVAV17MXM","2WY15M80YC331RFXBK44EYSGQ0"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "软件升级"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "Pro 发生 E-509 时，如何结合产品配置判断处理方式？",
+      "reference_answer": "应先确认使用的是 Pro 专用 CS-200 充电桩，因为 Pro 不适用 CS-100；确认型号匹配后再继续排查充电握手。",
+      "gold_chunk_ids": ["6ECD58VYW82634G7YJ4NYTVS5N","34Q5N9KQRPZN2XAAPCR3NFQWYA"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "故障代码处理"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "为什么人员距离要求会随速度变化？",
+      "reference_answer": "规范按速度分级：速度越高，要求的人员距离越大；1.5 m/s 以上需 3 m，0.8～1.5 m/s 需 1.5 m，低于 0.8 m/s 需 0.5 m。",
+      "gold_chunk_ids": ["1YY0EHTZCDKGYT3F6JN1KPQCPA"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "人机协作距离"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "部署验收为什么同时需要检查通道、充电桩和地图？",
+      "reference_answer": "通道决定能否安全通行，充电桩必须与型号匹配，地图和二维码地标决定定位可靠性；三者任一不满足都不能标记为可生产运行。",
+      "gold_chunk_ids": ["7ZNGNZPRBV3NDKSA1AJAKVK0F1","34Q5N9KQRPZN2XAAPCR3NFQWYA","2A0MVMV9HH2ASJ05E69VC3DA57"],
+      "question_type": "multi_hop",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "部署验收条件"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ],
+          [
+            "NX-700评估基线-产品与部署.md",
+            "传感器与定位"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "概括 NX-700 的每日巡检要求。",
+      "reference_answer": "早班前 30 分钟检查 SOH、电池、激光雷达、驱动轮、二维码地标和防撞条；发现阈值异常时按规定更换、清洁、补码或停机处理。",
+      "gold_chunk_ids": ["1DH29QM2092QS5Z2SA22MHQJWE"],
+      "question_type": "summary",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "概括 NX-700 的预防性维护周期。",
+      "reference_answer": "每月清洁雷达并检查防撞条；每季度更换驱动轮润滑油并校准超声波；每半年检测电池并重建 SLAM 地图；每年更换驱动轮并检查焊缝。",
+      "gold_chunk_ids": ["42SRV5PH3RPS5SQ4J16HGWDJAB"],
+      "question_type": "summary",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "预防性维护与备件"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "概括电池冒烟的应急流程。",
+      "reference_answer": "先疏散 10 m 内人员并警戒，再通知消防部门说明锂电池火灾，使用 D 类灭火器，禁止用水或 ABC 干粉灭火器。",
+      "gold_chunk_ids": ["7Z3HK1NRSD7FRSH99K7VY3ZVHW"],
+      "question_type": "summary",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "电池冒烟应急"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "概括云同步的数据安全要求。",
+      "reference_answer": "地图、货架坐标和路线默认保存在本地加密芯片；云同步使用 AES-256；欧盟默认关闭，开启需 GDPR 评审和数据负责人批准。",
+      "gold_chunk_ids": ["2ZKDJ2J0GB3B54TGGKRGF1RFYE"],
+      "question_type": "summary",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "数据安全与云同步"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "部署 NX-700 前需要完成哪些验收？",
+      "reference_answer": "至少检查最窄通道、充电桩型号、地图版本、二维码地标、急停与防撞条、载荷上限和网络覆盖；任一不满足不能生产运行。",
+      "gold_chunk_ids": ["7ZNGNZPRBV3NDKSA1AJAKVK0F1"],
+      "question_type": "summary",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "部署验收条件"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "NX-700 的采购单价是多少？",
+      "reference_answer": "资料没有提供 NX-700 整机采购单价，无法从当前知识库确认。",
+      "gold_chunk_ids": [],
+      "question_type": "unanswerable",
+      "is_unanswerable": true,
+      "requires_citation": false,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": []
+      }
+    },
+    {
+      "question": "NX-700 支持哪些品牌的第三方 WMS？",
+      "reference_answer": "当前资料没有说明第三方 WMS 品牌兼容性，无法确认。",
+      "gold_chunk_ids": [],
+      "question_type": "unanswerable",
+      "is_unanswerable": true,
+      "requires_citation": false,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": []
+      }
+    },
+    {
+      "question": "2026 年是否会发布 NX-800？",
+      "reference_answer": "当前资料没有 NX-800 或 2026 年产品路线信息，无法确认。",
+      "gold_chunk_ids": [],
+      "question_type": "unanswerable",
+      "is_unanswerable": true,
+      "requires_citation": false,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": []
+      }
+    },
+    {
+      "question": "NX-700 的源代码使用什么开源许可证？",
+      "reference_answer": "当前资料没有提供 NX-700 源代码许可证信息，无法确认。",
+      "gold_chunk_ids": [],
+      "question_type": "unanswerable",
+      "is_unanswerable": true,
+      "requires_citation": false,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": []
+      }
+    },
+    {
+      "question": "发生碰撞后保险理赔金额是多少？",
+      "reference_answer": "当前资料只规定事故记录和上报要求，没有保险理赔金额信息。",
+      "gold_chunk_ids": [],
+      "question_type": "unanswerable",
+      "is_unanswerable": true,
+      "requires_citation": false,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": []
+      }
+    },
+    {
+      "question": "请给出 Pro 使用的充电桩型号，并引用依据。",
+      "reference_answer": "Pro 必须使用 CS-200 充电桩。依据是《NX-700 评估基线：产品与部署配置》的“速度、续航与充电”章节。",
+      "gold_chunk_ids": [],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "速度、续航与充电"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "请判断“Pro 可以使用 Standard 的驱动轮”是否正确，并说明依据。",
+      "reference_answer": "不正确。Pro 驱动轮是专用件，不能与 Standard 或 Lite 互换。",
+      "gold_chunk_ids": ["2WY15M80YC331RFXBK44EYSGQ0","42V8YSJ2QQK7CG1HRDX0KGJA8D"],
+      "question_type": "fact",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-产品与部署.md",
+            "产品型号与能力"
+          ],
+          [
+            "NX-700评估基线-运维与故障处理.md",
+            "每日巡检"
+          ]
+        ]
+      }
+    },
+    {
+      "question": "如果环境温度为 46°C，是否还能继续运行？",
+      "reference_answer": "不能。安全规范禁止在环境温度超过 45°C 时运行。",
+      "gold_chunk_ids": ["21YRGSRQNED4H79AMN7075WJWE"],
+      "question_type": "conditional",
+      "is_unanswerable": false,
+      "requires_citation": true,
+      "allowed_answers": null,
+      "annotations": {
+        "gold_sources": [
+          [
+            "NX-700评估基线-仓库安全与应急.md",
+            "禁止操作"
+          ]
+        ]
+      }
+    }
+  ]
+}

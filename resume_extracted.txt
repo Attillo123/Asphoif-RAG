@@ -1,0 +1,85 @@
+张可真
+求职意向：    AI应用开发
+21岁    男    汉    共青团员    河北
+15833633265    1870679840@qq.com
+教育背景
+河北工业大学（双一流    211）-电子信息工程（新工科人工智能试点班）    -本科    2023.08 -     至今
+专业成绩：    GPA 3.72/4
+专业排名：    5/30
+主修课程：    数据通信与计算机网络、数据结构、深度学习、数字电子技术、电路与电子线路基础、微机原理、数字图像处理、智能信
+息处理、模式识别、数字信号处理等等
+实习经验
+AIwelink     团队    -运维开发    2026.05 -     至今
+参与 AI API     聚合平台的基础设施建设与运维，负责生产服务器、    API服务、数据库及内部文档平台的部署维护
+主要职责：
+负责 7台 Linux     服务器节点的日常维护，其中包含     6台生产服务器，覆盖香港、美国等多地域环境，承担进程管理、资源检查、日志
+排查和异常恢复
+累计部署并维护约     20个服务实例，完成     Docker    容器化部署、域名与    HTTPS    配置、反向代理、配置管理和版本更新
+负责 MySQL/PostgreSQL     数据库部署与运维，建立定期备份、恢复验证、权限控制和备份轮换机制，设置数据库备份文件滚动保留
+30天，并定期执行恢复验证
+持续负责服务发布与线上故障处置，排查接口不可用、进程异常、配置错误、数据库连接及部署失败等问题，支撑平台稳定服务
+200+用户
+项目经验
+企业级     RAG     知识库智能问答平台    -独立开发
+项目描述：
+基于 FastAPI + React + MySQL + OpenSearch + Redis     构建的企业级     RAG     问答系统，支持知识库管理、文档幂等入库、    Dense +
+BM25     混合检索、    RRF     融合、多级缓存、    SSE 流式问答与引用回溯。系统面向企业内部知识库场景，重点解决中文专有名词召回
+差、权限越权、依赖抖动导致链路不可用和效果无法量化评估四类问题
+技术栈：
+Python 3.10    、FastAPI    、SQLAlchemy 2.x    、Pydantic    、MySQL    、Redis    、OpenSearch 2.12    （IK 中文分词     + k-NN    ）、OpenAI-
+compatible API    、Qwen Embedding    、RAGAS    、React    、TypeScript    、Vite、Docker Compose    、Nginx    、pytest
+核心工作：
+搭建 Dense    （k-NN     向量）    + Sparse    （BM25    ）应用层并行混合检索链路，索引期     ik_max_word    、检索期     ik_smart    ，经 RRF     融合截断
+至 final_top_k    ；不使用     OpenSearch Hybrid DSL    ，以保留两路独立的耗时、熔断与降级观测能力
+设计请求级     Deadline     逐级传递与     CLOSED/OPEN/HALF_OPEN     分级熔断，单路检索失败时保留另一路并标记固定降级原因，双路
+皆失败才返回不可用；    Redis     采用 Cache Aside     并支持不可用时旁路主链路
+实现 SHA-256     内容哈希幂等入库与可恢复状态机（    PARSING→CHUNKING→EMBEDDING→INDEXING→READY    ），配合稳定
+Chunk ID     与 Bulk upsert    ，保证重复上传和失败重试不产生重复索引；    Embedding     返回数量与     1024     维度强校验
+实现 Embedding     与检索结果多级缓存，    Key 携带 owner_id    、知识库版本、模型与检索版本，    TTL 随机抖动，热点     Key 过期用     Redis
+短锁等待重读防击穿
+基于 fetch + ReadableStream     实现 SSE     流式问答，自定义     start/citation/delta/end/error     事件协议与单调     seq，支持打字机效果、逐
+条引用回溯及答案     PII 脱敏
+建立线上     Trace 与离线评估闭环，记录模型、索引、    Prompt    、Top-K     与融合策略等运行清单，落地
+Recall@K/Precision@K/MRR/nDCG@K     确定性指标、    RAGAS    （LLM-as-judge    ）、引用正确性与拒答质量四类评估器及人工评分量
+表
+基于 Docker Compose     编排 migrate/api/worker/frontend     四服务并配置     Nginx     反代与分层健康检查，编写     39 项 pytest     测试覆盖权限
+隔离、并行检索、熔断降级与缓存契约
+使用 Vue3 开发文档管理和聊天页面，支持文档上传、知识库选择、流式回答和引用来源展示
+API Key Dashboard    ：账号池智能运维     Agent
+项目描述：
+面向多站点     API/OAuth     账号池运维场景，构建可定时唤醒、事件触发、持续跟踪和自动复盘的智能     Agent    ，根据容量、并发、事件和
+历史反馈生成风险判断、分类型补充容量方案、告警草稿及后续观察计划
+技术栈：
+FastAPI    、MongoDB    、LangChain    、OpenAI-compatible API    、React    、TypeScript    、asyncio    、Vitest
+核心工作：
+基于 asyncio     构建任务调度与状态机，结合多级锁、    TTL、幂等键和冷却限流，实现定时巡检、事件触发、失败隔离和人工复核
+重构容量适配与决策校验层，支持     K12/Plus     分类型补号建议，并将主系统容量评估作为证据而非最终决策
+实现日周总结、人工反馈记忆和历史决策复盘，使     Agent     能在后续运行中复用结构化运营经验
+开发 Agent     运维工作台与自动评测集，支持完整     Trace、失败原因、通知审计及     7 个关键业务回归场景
+建立只读能力和人工确认边界，禁止     Agent     修改业务数据
+数据库日志滚动保留与安全清理系统
+项目描述：
+针对服务器上多实例     MySQL/PostgreSQL     日志表持续增长问题，构建可配置的数据库生命周期管理工具，实现过期日志自动识别、
+分批清理、异常恢复和定时调度，重点解决大表删除过程中的锁竞争、误删风险和任务可靠性问题
+技术栈：
+Python 3.10    、MySQL    、PostgreSQL    、PyMySQL    、psycopg3    、pytest    、uv、systemd
+核心工作：
+设计多数据库日志清理框架，统一适配     MySQL     与 PostgreSQL    ，支持多个数据库目标独立配置滚动保留策略
+优化日志大表删除流程，采用索引顺序限量删除、    CTE、SKIP LOCKED     和逐批提交，控制长事务及锁竞争风险
+构建 dry-run    、时间字段与索引检查、级联外键验证、固定表白名单等防护机制，降低错误配置导致的误删风险
+实现 advisory lock    、批次和运行时长限制、锁及语句超时、异常回滚与中断统计，支持任务安全续跑
+使用最小数据库权限、受限系统账号及     systemd     沙箱完成每日定时部署，并通过     journald     记录执行结果
+编写16项 pytest     测试覆盖配置、    SQL和异常流程；测试环境分批提交删除    200万条 MySQL     过期日志
+技能特长
+后端：    Python    、FastAPI    、SQLAlchemy    、Pydantic    、asyncio
+数据库：    MySQL    、PostgreSQL    、MongoDB    ，备份恢复、数据一致性、日志生命周期管理
+AI应用：    RAG、LangChain Agent    、Embedding    、向量检索、模型    API接入
+运维：    Linux    、Docker    、systemd    、Nginx    、API网关、多地域节点与故障排查
+工程化：    Git、GitHub Actions    、Cloudflare W    orkers/W    rangler    、pytest
+荣誉证书
+校级三等奖学金
+大学英语六级考试（    CET6    ）468分
+自我评价
+具备 Python/FastAPI     后端开发、    Linux     服务器部署、    API网关运维和     RAG/Agent     应用开发经验，能够完成接口开发、测试、部署与故
+障排查
+熟悉Vibe Coding    开发模式，能够熟练使用    Claude Code    、Codex    等智能开发工具
